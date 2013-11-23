@@ -306,8 +306,8 @@ int do_enter(vps_handler *h, envid_t veid, const char *root,
 			dup2(slave, 0);
 			dup2(slave, 1);
 			dup2(slave, 2);
-			/* Close the extra descriptor for the pseudo tty. */
-			close(slave);
+			/* Close all file descriptors except [0-2] before execve */
+			close_fds(0, -1);
 			if ((term = getenv("TERM")) != NULL) {
 				snprintf(buf, sizeof(buf), "TERM=%s", term);
 				env[sizeof(env)/sizeof(env[0]) - 2] = buf;
