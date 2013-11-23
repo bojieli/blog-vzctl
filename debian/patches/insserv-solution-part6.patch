@@ -1,0 +1,23 @@
+From: Thorsten Schifferdecker <curx@openvz.org>
+Date: Wed, 8 Sep 2010 07:37:21 +0000 (+0400)
+Subject: init.d/vzeventd-redhat: fix desc field
+X-Git-Url: http://git.openvz.org/?p=vzctl;a=commitdiff_plain;h=dbc773f1a9dee828b245baeda1fa3b7ab25907d2;hp=3e513e534e1b8ff308b54e92744036760ace385c
+
+init.d/vzeventd-redhat: fix desc field
+
+Apparently a left over from the copy-paste.
+---
+
+diff --git a/etc/init.d/vzeventd-redhat.in b/etc/init.d/vzeventd-redhat.in
+index 447b0e5..35c011f 100755
+--- a/etc/init.d/vzeventd-redhat.in
++++ b/etc/init.d/vzeventd-redhat.in
+@@ -15,7 +15,7 @@
+ # X-Start-Before: vz
+ # X-Stop-After: vz
+ # Short-Description: start and stop vzeventd
+-# Description: ntpd is the NTPv4 s OpenVZ events daemon.
++# Description: vzeventd is the OpenVZ events daemon.
+ #              It takes care of events sent by the OpenVZ kernel
+ #              and performs required actions associated with those events.
+ ### END INIT INFO

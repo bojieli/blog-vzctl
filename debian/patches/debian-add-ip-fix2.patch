@@ -1,0 +1,11 @@
+--- t/vzctl-3.0.24/etc/dists/scripts/debian-add_ip.sh	2010-11-08 21:26:18.000000000 +0100
++++ vzctl-3.0.24/etc/dists/scripts/debian-add_ip.sh	2010-11-06 12:50:21.997160740 +0100
+@@ -113,7 +113,7 @@
+ 	broadcast 0.0.0.0" >> ${CFGFILE}.bak
+ 	    if [ -z $create_config_has_gateway ]; then
+ 		echo "	gateway ${FAKEGATEWAY}" >> ${CFGFILE}.bak
+-		reate_config_has_gateway=1
++		create_config_has_gateway=1
+ 	    fi
+ 	    echo >> ${CFGFILE}.bak
+ 	else

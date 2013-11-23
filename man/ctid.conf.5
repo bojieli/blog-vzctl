@@ -1,0 +1,118 @@
+.TH ctid.conf 5 "6 Apr 2010" "OpenVZ" "Containers"
+.SH NAME
+\fIctid\fR.conf \- configuration file for an OpenVZ container.
+.SH SYNOPSIS
+\fB/etc/vz/conf/\fICTID\fB.conf\fR
+.SH DESCRIPTION
+This is a configuration file for a container. It is stored as
+\fB/etc/vz/conf/\fR\fICTID\fB.conf\fR, where \fICTID\fR
+is the numeric ID of the given container.
+.PP
+Configuration file consists of lines in the form
+.PP
+\fBPARAMETER\fR="\fIvalue\fR"
+.PP
+All parameter names and values are case-sensitive. Quotes surrounding a
+\fIvalue\fR are required if value contains spaces, and are optional otherwise.
+Extra spaces are not allowed. All unrecognized lines will be ignored.
+.PP
+The meaning of most parameters are described in \fBvzctl\fR(8), so here only
+the appropriate \fBvzctl set\fR option names are given.
+.SS Miscellaneous parameters
+.IP \fBNAME\fR="\fIvename\fR"
+Corresponds to the \fB--name\fR option.
+.IP \fBDESCRIPTION\fR="\fIstring\fR"
+Corresponds to the \fB--description\fR option.
+.IP \fBONBOOT\fR="\fByes\fR|\fBno\fR"
+Specifies whether this container will be started during system boot.
+Default is \fBno\fR, meaning the container will not be started
+if \fBONBOOT\fR parameter is omitted.
+Corresponds to the \fB--onboot\fR option.
+.IP \fBBOOTORDER\fR="\fInumber\fR"
+Specifies the CT boot order priority. Corresponds to the
+\fB--bootorder\fR option.
+.IP \fBOSTEMPLATE\fR="\fItmpl_name\fR"
+Corresponds to the \fB--ostemplate\fR option.
+.IP \fBVE_ROOT\fR="\fIdirectory\fR"
+Corresponds to the \fB--root\fR option.
+.IP \fBVE_PRIVATE\fR="\fIdirectory\fR"
+Corresponds to the \fB--private\fR option.
+.IP \fBDISABLED\fR="\fByes\fR|\fBno\fR"
+Corresponds to the \fB--disabled\fR option.
+.IP \fBORIGIN_SAMPLE\fR="\fIname\fR"
+Name of container sample configuration which the container is based on.
+.IP \fBCONFIG_CUSTOMIZED\fR="\fByes\fR|\fBno\fR"
+Set to \fByes\fR if the container configuration was modified.
+.SS Resource management parameters
+.IP \fBNUMPROC\fR
+Corresponds to the \fB--numproc\fR option.
+.IP \fBNUMFILE\fR
+Corresponds to the \fB--numfile\fR option.
+.IP \fBNUMFLOCK\fR
+Corresponds to the \fB--numflock\fR option.
+.IP \fBNUMPTY\fR
+Corresponds to the \fB--numpty\fR option.
+.IP \fBNUMSIGINFO\fR
+Corresponds to the \fB--numsiginfo\fR option.
+.IP \fBNUMTCPSOCK\fR
+Corresponds to the \fB--numtcpsock\fR option.
+.IP \fBNUMOTHERSOCK\fR
+Corresponds to the \fB--numothersock\fR option.
+.IP \fBPRIVVMPAGES\fR
+Corresponds to the \fB--privvmpages\fR option.
+.IP \fBVMMGUARPAGES\fR
+Corresponds to the \fB--vmguarpages\fR option.
+.IP \fBOOMGUARPAGES\fR
+Corresponds to the \fB--oomguarpages\fR option.
+.IP \fBLOCKEDPAGES\fR
+Corresponds to the \fB--lockedpages\fR option.
+.IP \fBSHMPAGES\fR
+Corresponds to the \fB--shmpages\fR option.
+.IP \fBKMEMSIZE\fR
+Corresponds to the \fB--kmemsize\fR option.
+.IP \fBTCPSNDBUF\fR
+Corresponds to the \fB--tcpsndbuf\fR option.
+.IP \fBTCPRCVBUF\fR
+Corresponds to the \fB--tcprcvbuf\fR option.
+.IP \fBOTHERSOCKBUF\fR
+Corresponds to the \fB--othersockbuf\fR option.
+.IP \fBDGRAMRCVBUF\fR
+Corresponds to the \fB--dgramrcvbuf\fR option.
+.IP \fBDCACHESIZE\fR
+Corresponds to the \fB--dcachesize\fR option.
+.IP \fBNUMIPTENT\fR
+Corresponds to the \fB--numiptent\fR option.
+.IP \fBCPUUNITS\fR
+Corresponds to the \fB--cpuunits\fR option.
+.IP \fBDISKSPACE\fR="\fIsoftlimit\fR[:\fIhardlimit\fR]"
+Corresponds to the \fB--diskspace\fR option.
+.IP \fBDISKINODES\fR="\fIsoftlimit\fR[:\fIhardlimit\fR]"
+Corresponds to the \fB--diskinodes\fR option.
+.IP \fBQUOTATIME\fR="\fIseconds\fR"
+Corresponds to the \fB--quotatime\fR option.
+.IP \fBQUOTAUGIDLIMIT\fR="\fInum\fR"
+Corresponds to the \fB--quotaugidlimit\fR option.
+.IP \fBNOATIME\fR="\fByes\fR|\fBno\fR"
+Corresponds to the \fB--noatime\fR option.
+.IP \fBCAPABILITY\fR="\fIcapname\fR:\fBon\fR|\fBoff\fR\ [...]"
+Corresponds to the \fB--capability\fR option.
+.SS Network related parameters
+.IP \fBIP_ADDRESS\fR="\fIaddress\fR\ [\fIaddress\fR\ ...]"
+Specifies the \fIaddress\fR the container will be assigned. Several addresses
+are divided by spaces.
+Corresponds to the \fB--ipadd\fR option.
+.IP \fBHOSTNAME\fR="\fIname\fR"
+Corresponds to the \fB--hostname\fR option.
+.IP \fBNAMESERVER\fR="\fIip\fR\ [\fIip\fR\ ...]"
+Corresponds to the \fB--nameserver\fR option. Several name server addresses
+are divided by spaces.
+.IP \fBSEARCHDOMAIN\fR="\fIdomain\fR\ [\fIdomain\fR\ ...]"
+Corresponds to the \fB--searchdomain\fR option. Several search domains
+are divided by spaces.
+.SH SEE ALSO
+.BR vzctl (8),
+.BR vzcfgvalidate (8),
+.BR vz.conf (5),
+.BR http://wiki.openvz.org/UBC .
+.SH LICENSE
+Copyright (C) 2001-2010, Parallels, Inc. Licensed under GNU GPL.

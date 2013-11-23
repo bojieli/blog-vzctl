@@ -1,0 +1,60 @@
+From: Ola Lundqvist <ola@inguza.com>
+Date: Wed, 8 Sep 2010 07:39:52 +0000 (+0400)
+Subject: init.d/vzeventd-redhat: add Required-Stop, Required-Start
+X-Git-Url: http://git.openvz.org/?p=vzctl;a=commitdiff_plain;h=1148f7a5174ad448218eb625e99d47b9b479be50;hp=dbc773f1a9dee828b245baeda1fa3b7ab25907d2
+
+init.d/vzeventd-redhat: add Required-Stop, Required-Start
+
+Basically, we need to have Required-Start and Required-Stop.
+Also, we need to depend on $remote_fs since /usr might be on it.
+
+These are the messages from Debian QA script:
+
+W: vzctl: init.d-script-missing-lsb-keyword /etc/init.d/vzeventd required-stop
+N:
+N:    This /etc/init.d script has an LSB keyword section, but it is missing
+N:    the given required LSB keyword. If the value of this keyword should be
+N:    empty, please still include it in the LSB keyword section with an empty
+N:    value.
+N:
+N:    Refer to http://wiki.debian.org/LSBInitScripts for details.
+N:
+N:    Severity: normal, Certainty: certain
+N:
+
+W: vzctl: init.d-script-missing-lsb-keyword /etc/init.d/vzeventd required-start
+
+E: vzctl: init.d-script-missing-dependency-on-remote_fs /etc/init.d/vzeventd: required-start
+N:
+N:    The given init script seems to refer to /usr, possibly using a file or
+N:    binary from there. Without a dependency on $remote_fs in Required-Start
+N:    or Required-Stop, as appropriate, the init script might be run before
+N:    /usr is mounted or after it's unmounted.
+N:
+N:    Using Should-Start or Should-Stop to declare the dependency is
+N:    conceptually incorrect since the $remote_fs facility is always
+N:    available. Required-Start or Required-Stop should be used instead. Also,
+N:    please note that $all should not be used in Required-Stop, only
+N:    Required-Start.
+N:
+N:    Refer to http://wiki.debian.org/LSBInitScripts for details.
+N:
+N:    Severity: important, Certainty: possible
+N:
+
+E: vzctl: init.d-script-missing-dependency-on-remote_fs /etc/init.d/vzeventd: required-stop
+---
+
+diff --git a/etc/init.d/vzeventd-redhat.in b/etc/init.d/vzeventd-redhat.in
+index 35c011f..eccc420 100755
+--- a/etc/init.d/vzeventd-redhat.in
++++ b/etc/init.d/vzeventd-redhat.in
+@@ -10,6 +10,8 @@
+ 
+ ### BEGIN INIT INFO
+ # Provides: vzeventd
++# Required-start: $remote_fs
++# Required-stop: $remote_fs
+ # Default-Start: 2 3 4 5
+ # Default-Stop: 0 1 6
+ # X-Start-Before: vz

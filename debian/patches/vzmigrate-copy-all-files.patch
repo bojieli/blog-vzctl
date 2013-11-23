@@ -1,0 +1,29 @@
+From: Kir Kolyshkin <kir@openvz.org>
+Date: Tue, 6 Jul 2010 14:16:38 +0000 (+0400)
+Subject: vzmigrate: migrate premount/postumount action scripts
+X-Git-Tag: vzctl-3.0.24.1~4
+X-Git-Url: http://git.openvz.org/?p=vzctl;a=commitdiff_plain;h=e5377a816e1d5240c1a023bff4f3fb7214a70264;hp=b8f60495c1a77cc48f1242ca1e515989bdf46636
+
+vzmigrate: migrate premount/postumount action scripts
+
+Commit eeceb721472483f6e8d90cbfe72967c3336b5e77 added
+support for premount/postumount action scripts. vzmigrate
+should know about these scripts in order to migrate them.
+
+Signed-off-by: Kir Kolyshkin <kir@openvz.org>
+(cherry picked from commit b8aa99670ac2905b3a4ed44edd75d259e7b258be)
+---
+
+diff --git a/bin/vzmigrate.in b/bin/vzmigrate.in
+index 29ecfc7..479ba37 100755
+--- a/bin/vzmigrate.in
++++ b/bin/vzmigrate.in
+@@ -56,7 +56,7 @@
+ #	entering a password.
+ 
+ 
+-ACT_SCRIPTS_SFX="start stop mount umount"
++ACT_SCRIPTS_SFX="start stop mount umount premount postumount"
+ # blowfish is a fast block cipher, much faster then 3des
+ SSH_OPTIONS="-c blowfish"
+ SCP_OPTIONS=$SSH_OPTIONS

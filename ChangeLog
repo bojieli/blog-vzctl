@@ -1,0 +1,200 @@
+Since after 3.0.12 release, this file is obsoleted. Complete change log
+can be obtained from OpenVZ git repository.
+
+	http://git.openvz.org/?p=vzctl;a=shortlog
+	http://git.openvz.org/?p=vzctl;a=log
+
+Below is a change log for old vzctl releases.
+
+
+   3.0.12: Thu Oct 5 2006 <igor@openvz.org>
+	* vzctl start: added --wait cmdline option
+	* added vznetcfg script for veth setup
+	* fixed error message in case kernel compiled without USER_RESOURCES
+	* added '--applyconfig_map name' vzctl set option
+	* changed friendly name data structure
+	* fixed vzmigrate to support VE name feature (bug #239)
+   	* fixed annoying arp warning (bug #189)
+	* added bash completion script (bug #212)
+	* added check to vzmigrate if OpenVZ is run on another side (bug #163)
+	* removed debian directory from the tarball (bugs #197, #194)
+	* removed LICVIEW from /etc/init.d/vz (bug #237)
+	* fixed misprints and /dev/nul(l) usage in dist scripts (bug #228)
+	* fixed vzmigrate to work with different awk flavors (bug #231)
+	* years in copyright fixed (bug #232)
+	* increased some UBCs in ve-light.conf-sample (bug #234)
+	* fixed some minor memory leaks while doing realloc()
+	* vzctl destroy: remove VE names on destroy (bug #236)
+	* added --name option description to vzctl(8) man page (bug #232)
+	* merged libvzctl-simfs and libvzctl into a single libvzctl
+	* vzlist: replaced sprintf() with snprintf() to avoid buffer overflows
+	* vzctl enter: forward error messages from child process
+	* vzctl enter: fix off-by-one error which resulted in
+	  uninitialized PATH
+	* arpsend: fixed segfault when parsing long options
+	* vzlist: fixed cast from pointer to integer of different size warnings
+	* vzctl enter: exit with correct error code on enter fail (bug #245)
+	* added udev rules for /dev/vzctl (bug #204)
+	* added syscall numbers for powerpc
+	* /etc/init.d/vz: check for /dev/vzctl only after modprobe (bug #204)
+	* fixed ppc64 compilation
+	* removed distro-specific stuff from 'make install' (bug #254)
+	* added 'make install-gentoo' and Gentoo init.d/vz script (bug #262)
+	* fixed arpsend options parsing for some compilers (bug #261)
+	* man pages cleanup (VPS->VE, etc.)
+	* changed all utilities and man pages to refer to VE not VPS
+	* vzcpucheck: give error if VE0 CPU units not set (bug #249)
+
+   3.0.11: Mon Aug  7 2006 <igor@openvz.org>
+	* fixed using VE_ROUTE_SRC_DEV variable
+	* added VPS name support
+	* added change number of CPUs available in the VPS functionality.
+	* fixes in CPT error processing
+	* added upport of xt_mac iptables module
+	* fixed awk expression to be compatible with mawk
+   3.0.10: Wed Jun  7 2006 <igor@openvz.org>
+	* added virtual ethernet device support (--veth_add, --veth_del)
+	* added  /proc/meminfo virtualization support (--meminfo mode:value)
+	* added VE0 UB setup functionality (--reset-ub)
+   3.0.9: Wed May 24 2006 <igor@openvz.org>
+	vzctl:
+	* switched to new versioning scheme.
+	* added -z option to /sbin/init
+		(http://bugzilla.openvz.org/show_bug.cgi?id=164)
+	* reset standart file desc [0-2] to /dev/null in case they are closed.
+	* added possibility to set cpulimit in %
+	* added suffixes G,M,K support for --diskspace option
+	* set SIGPIPE handler to SIG_IGN before fist write to stdout/err
+	* added Debian packaging support
+	* changed directory structure.
+		/etc/sysconfig/vz-scripts -> /etc/vz/conf
+		/etc/sysconfig/vz-scripts/dists -> /etc/vz/dists
+		/etc/sysconfig/vz -> /etc/vz/vz.conf
+	* better distribution detection in vz initscript.
+	* added Ubuntu distribution configuration file as copy of debian.
+		(http://bugzilla.openvz.org/show_bug.cgi?id=119)
+	* Increased kmemsize, privmpages, numfiles for x86_64
+		ve-vps.basic.conf-sample.
+		(http://bugzilla.openvz.org/show_bug.cgi?id=69)
+	* changed -p -> --preserve=mode,ownership for 'cp' workaround in
+		case /proc is not mounted.
+	* internal modifications
+		changed dynamic UB structure to static one.
+		moved VPS configure functionality to vps_configure.c
+		moved destroy functionaliny to destroy.c
+	vzmigrate:
+	* move config as veid.migrated to allow backward migration
+		(http://bugzilla.openvz.org/show_bug.cgi?id=152) 
+	* added coping of action scripts.
+		(http://bugzilla.openvz.org/show_bug.cgi?id=157)
+	* fixed --keep-dst option processing. Option behavior was inverted.
+   3.0.0-8: Mon Apr 24 2006 <igor@openvz.org>
+	* UBC parameters > LONG_MAX in VPS conf truncate to LONG_MAX
+	* added installation of vzmigrate.8 man page
+	* use 'uname -m' for arch selection	
+   3.0.0-6: Tue Apr 18 2006 <kir@openvz.org>
+	* man page fixes
+   3.0.0-5: Fri Apr  7 2006 <igor@sw.ru>
+	* added checkpointing support
+	* added kernel headers for standalone compilation 
+	* chaged license from QPL to GPL
+	* set personality PER_LINUX32 on x86_64 arch for i386 VPSes
+	* fixed --iptables store (do not store dependent modules)
+	* Do skip unknown iptables modules in config
+ 	* set arg[0] = "-bash" on enter
+   3.0.0-4: Thu Mar 16 2006 <kir@openvz.org>
+	* cron scripts do nothing if VZ is not loaded (bug #107)
+	* cosmetic vzctl.8 man page fixes
+	* reverted bug #110 changes, see http://bugzilla.openvz.org/111
+	* added ipt_REDIRECT support, thanks to jstubbs-at-gentoo.org
+   3.0.0-3: Thu Mar  2 2006 <igor@sw.ru>
+	* put_param3() can incorrectly set $name=( "" ) (bug #111).
+		Affects gentoo VPSs. Thanks to jstubbs-at-gentoo.org
+	* fixed compilation against old kernels (<= 022stab070)
+	* description of set parameter suffixes (K, M, G, P) added
+		to vzctl.8 man page (bug #105)
+	* fixed gentoo-add_ip.sh script (bug #110)
+   3.0.0-2: Thu Feb 23 2006 <igor@sw.ru>
+	* fixed VPS start on old kernel (witthout feature_mask support)	
+   3.0.0-1: Wed Feb 22 2006 <igor@sw.ru>
+	* enable sysfs for SuSE like distributions
+	* added possibility to setup UBC parameters in the form
+		xxx[GMKPB]:yyy[GMKPB]
+   2.7.0-27: Tue Feb  7 2006 <igor@sw.ru>
+	* fixed VE_CONFFILE variable passed to vps.mount script
+	* fixed venet0 initialization in vz initscript (bug #99)
+   2.7.0-26: Thu Feb  2 2006 <igor@sw.ru>
+	* fixed OpenVZ startup under SuSE
+	* fixed buffer overflow in vzlist
+	* fixed __NR_fairsched_chwt, __NR_fairsched_rate ioctl numbers
+		under x86_64
+	* fixed src/arpsend.c compilation under gcc4
+   2.7.0-25: Thu Dec 29 2005 <igor@sw.ru>
+	* setup loopback for debian
+	* skip fairsched setup if not supported
+	* do VPS umount in loop untill EINVAL
+	* close all fds before VPS enter
+	* set mode 600 for /dev/vzctl
+	* fixed destroy in case VPS private area is not a directory
+	* increased parameters in VPS samples:
+		kmemsize *= 1.2, numfiles *= 1.6 dcachesize *= 2 
+	* load iptables modules from /etc/init.d/vz
+	* do preload libnss on enter action
+    2.7.0-24: Fri Oct 28 2005 <igor@sw.ru>
+	* set proc title as 'vzctl: ttyname' on enter
+	* fixed enter freeze if any processes running in bg
+	* changed _syscallN -> syscall()
+	* added vzosname call on create action for getting full name
+    2.7.0-23: Mon Oct 10 2005 <igor@sw.ru>
+	vzctl:
+	* fixes in gentoo network setup <Benedikt Boehm hollow@gentoo.org>
+	* fixed enter (handle EAGAIN in write())
+	* fixes in 2level quota setup (use syscal mknod() for device creation)
+	* added -fPIC flag for build under x86_64
+    2.7.0-22: Wed Sep 21 2005 <igor@sw.ru>
+	vzctl:
+	* increased privvmpages to '49152:53575' for vps.basic sample config
+	* changed Open Virtuozzo -> OpenVZ
+	* fixed terminal screwup on enter action
+    2.7.0-21: Tue Aug 16 2005 <igor@sw.ru>
+	vzctl:
+	* rewriten enter action (use pipes for communication)
+	* fixes to use new vzkernel headers provisioning scheme
+	* moved VPS create functionality to library 
+	* added runscript action
+	* fixed error mesage if UBC parameters applayed on stopped VPS
+	* added VPS states STATE_STOPPED, STATE_STOPPING
+	vzlist:
+	* Skip processing VPS if no private area exists
+    2.7.0-20: Wed Aug 10 2005 <igor@sw.ru>
+	vzctl:
+	* internal modifications in list.h
+	* manpage fixes
+    2.7.0-19: Mon Aug  8 2005 <igor@sw.ru>
+	vzctl:
+	* minor spelling fixes
+	* added 'quotaon -aug' to 2level quota action script
+    2.7.0-18: Sat Aug  6 2005 <igor@sw.ru>
+	vzctl:
+	* added aquota.{user|group} creation in case 
+	    /proc/vz/vzaquota/cur/aquota.{user|group}} exists
+	* fixed libvzctl-fs.so installation
+    2.7.0-17: Fri Aug  5 2005 <igor@sw.ru>
+	* added callback support in vps_start
+	* enable vpsreboot cron script
+    2.7.0-16: Tue Aug  2 2005 <igor@sw.ru>
+	vzctl:
+	* fixed 2level quota setup under gentoo, slackware
+	* give access for /dev/simfs on quotaugidlimit setup
+	* added libvzctl-simfs
+	initscripts:
+	* added venet0 interface setup on 'vz start'
+    2.7.0-15: Wed Jul 27 2005 <igor@sw.ru>
+	vzctl:
+	* fixed arp update in case of >1 ip addresses
+	* changed DEF_OSTEMPLATE redhat-9 -> fedora-core-4
+	* fixed VPS network setup under gentoo
+	* fixed 'exec VPSID -' action
+	* fixed compilation under 2.6.8-22stab028
+	initscripts:
+	* create /dev/vzctl on Virtuozzo start

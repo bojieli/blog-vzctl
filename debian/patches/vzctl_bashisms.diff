@@ -1,0 +1,24 @@
+diff -urN vzctl-3.0.22.orig/bin/vznetcfg.in vzctl-3.0.22/bin/vznetcfg.in
+--- vzctl-3.0.22.orig/bin/vznetcfg.in	2007-12-17 07:44:21.000000000 -0600
++++ vzctl-3.0.22/bin/vznetcfg.in	2008-04-08 18:25:15.000000000 -0500
+@@ -26,7 +26,7 @@
+ 
+ init_veth()
+ {
+-	local dev="$1"
++	local dev; dev="$1"
+ 
+ 	ip link set "$dev" up
+ }
+diff -urN vzctl-3.0.22.orig/bin/vzpid.in vzctl-3.0.22/bin/vzpid.in
+--- vzctl-3.0.22.orig/bin/vzpid.in	2007-12-17 07:44:21.000000000 -0600
++++ vzctl-3.0.22/bin/vzpid.in	2008-04-08 18:23:55.000000000 -0500
+@@ -30,7 +30,7 @@
+ 
+ getveid()
+ {
+-	local pid="$1"
++	local pid; pid="$1"
+ 
+ 	[ -f "/proc/$pid/status" ] || return
+ 	awk -v "pid=$pid" '

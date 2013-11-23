@@ -1,0 +1,47 @@
+--- vzctl-3.0.24/src/lib/exec.c
++++ vzctl-3.0.24.orig/src/lib/exec.c
+@@ -37,7 +37,7 @@
+ #include "script.h"
+ 
+ static volatile sig_atomic_t alarm_flag, child_exited;
++static char *envp_bash[] = {"HOME=/", "TERM=linux", ENV_PATH, NULL};
+-static char *envp_bash[] = {"HOME=/root", "TERM=linux", ENV_PATH, NULL};
+ 
+ int vz_env_create_ioctl(vps_handler *h, envid_t veid, int flags);
+ 
+reverted:
+--- vzctl-3.0.24/src/lib/env.c
++++ vzctl-3.0.24.orig/src/lib/env.c
+@@ -280,7 +280,7 @@
+ 	int fd, ret;
+ 	vps_res *res;
+ 	char *argv[] = {"init", "-z", "      ", NULL};
++	char *envp[] = {"HOME=/", "TERM=linux", NULL};
+-	char *envp[] = {"HOME=/root", "TERM=linux", NULL};
+ 
+ 	res = (vps_res *) data;
+ 	memset(&create_param, 0, sizeof(create_param));
+reverted:
+--- vzctl-3.0.24/src/lib/script.c
++++ vzctl-3.0.24.orig/src/lib/script.c
+@@ -38,7 +38,7 @@
+ #include "fs.h"
+ 
+ volatile sig_atomic_t alarm_flag;
++static char *envp_bash[] = {"HOME=/", "TERM=linux", ENV_PATH, NULL};
+-static char *envp_bash[] = {"HOME=/root", "TERM=linux", ENV_PATH, NULL};
+ 
+ int read_script(const char *fname, char *include, char **buf)
+ {
+reverted:
+--- vzctl-3.0.24/src/enter.c
++++ vzctl-3.0.24.orig/src/enter.c
+@@ -297,7 +297,7 @@
+ 			char *term;
+ 			char *arg[] = {NULL, NULL};
+ 			char *env[] = {ENV_PATH,
++				"HISTFILE=/dev/null",
+-//				"HISTFILE=/dev/null",
+ 				"USER=root", "HOME=/root", "LOGNAME=root",
+ 				NULL, /* for TERM */
+ 				NULL};

@@ -1,0 +1,954 @@
+From: Kir Kolyshkin <kir@openvz.org>
+Date: Thu, 2 Sep 2010 16:32:02 +0000 (+0400)
+Subject: vzeventd: initial implementation
+X-Git-Url: http://git.openvz.org/?p=vzctl;a=commitdiff_plain;h=4cc6257616e1a725650d6b026a42d17cd1c3cce8;hp=1b6f6aee9ab75288c3473a24784b1a3659e0155d
+
+vzeventd: initial implementation
+
+Recent OpenVZ kernels provided vzevent module which sends CT
+start/stop/reboot events (see bug #1427). This commit adds
+vzevent daemon, which reacts to such events and performs
+appropriate actions.
+
+Before vzeventd, the problem of restarting a CT which was rebooted from
+the inside, and the problem of cleaning up CT0 networking for a CT which
+was stopped from the inside were solved by using shell scripts run from
+cron, with some trickery inside a CT to mark it for reboot. The solution
+was suboptimal, cumbersome and ugly -- hopefully now with vzevent those
+kludges will be removed (by a separate commit).
+
+vzeventd is implemented as a daemon, plus there is a separate vzeventd
+initscript to start/stop it (and also load vzevent kernel module with
+the appropriate parameter). Since we now have two initscripts, common code
+(for init.d compatibility between Red Hat/Debian/SUSE) is moved into
+a separate file vzfunctions which is sourced from both initscripts.
+
+vzeventd listens to the events from the kernel (delivered via netlink
+socket). Current list of known events and associated vzeventd actions are:
+	start		ignore
+	stop		run /usr/lib/vzctl/scripts/vzevent-stop
+	mount		ignore
+	umount		ignore
+	reboot		run /usr/lib/vzctl/scripts/vzevent-reboot
+
+Events mount/umount are currently not implemented in the kernel for simfs.
+
+Event 'stop' is generated when CT is being stopped (either by vzctl or
+from inside the container, e.g. by executing halt). Script vzevent-stop
+does the following:
+	1. Waits till CT is stopped
+	2. Umounts CT if it's not unmounted
+	3. Cleans up CT0 network setup (i.e. arp and route records)
+
+Event 'reboot' is generated when CT is rebooted from inside (e.g. by
+executing reboot). Script vzevent-reboot does the following:
+	1. Waits till CT is stopped
+	2. Starts it (by running vzctl start).
+
+Signed-off-by: Kir Kolyshkin <kir@openvz.org>
+---
+
+diff --git a/etc/init.d/.gitignore b/etc/init.d/.gitignore
+index 1c36e62..76b8f02 100644
+--- a/etc/init.d/.gitignore
++++ b/etc/init.d/.gitignore
+@@ -1,4 +1,7 @@
+ vz-redhat
+ vz-gentoo
++vzfunctions
++vzeventd-redhat
++vzeventd-gentoo
+ Makefile.in
+ Makefile
+diff --git a/etc/init.d/Makefile.am b/etc/init.d/Makefile.am
+index 2209724..2181583 100644
+--- a/etc/init.d/Makefile.am
++++ b/etc/init.d/Makefile.am
+@@ -15,7 +15,7 @@
+ #  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ #
+ 
+-INITSCRIPTS = vz-redhat vz-gentoo
++INITSCRIPTS = vz-redhat vz-gentoo vzeventd-redhat vzeventd-gentoo vzfunctions
+ 
+ EXTRA_DIST = $(INITSCRIPTS:%=%.in)
+ 
+@@ -25,7 +25,9 @@ include $(top_srcdir)/pathsubst.am
+ 
+ install-redhat: vz-redhat
+ 	$(mkinstalldirs) $(DESTDIR)$(initddir)
++	$(INSTALL_SCRIPT) vzfunctions $(DESTDIR)$(initddir)/vzfunctions
+ 	$(INSTALL_SCRIPT) vz-redhat $(DESTDIR)$(initddir)/vz
++	$(INSTALL_SCRIPT) vzeventd-redhat $(DESTDIR)$(initddir)/vzeventd
+ 
+ install-suse: install-redhat
+ 
+@@ -34,3 +36,4 @@ install-debian: install-redhat
+ install-gentoo: vz-gentoo
+ 	$(mkinstalldirs) $(DESTDIR)$(initddir)
+ 	$(INSTALL_SCRIPT) vz-gentoo $(DESTDIR)$(initddir)/vz
++	$(INSTALL_SCRIPT) vzeventd-gentoo $(DESTDIR)$(initddir)/vzeventd
+diff --git a/etc/init.d/vz-gentoo.in b/etc/init.d/vz-gentoo.in
+index c177e7f..7ee5b3f 100755
+--- a/etc/init.d/vz-gentoo.in
++++ b/etc/init.d/vz-gentoo.in
+@@ -4,7 +4,7 @@
+ # $Header: /var/www/viewcvs.gentoo.org/raw_cvs/gentoo-x86/sys-cluster/vzctl/files/vz-3.0.10.initd,v 1.2 2006/07/09 10:29:24 phreak Exp $
+ 
+ depend() {
+-	after net
++	after net vzeventd
+ }
+ 
+ check_config() {
+diff --git a/etc/init.d/vz-redhat.in b/etc/init.d/vz-redhat.in
+index eb9d721..77448ef 100755
+--- a/etc/init.d/vz-redhat.in
++++ b/etc/init.d/vz-redhat.in
+@@ -25,10 +25,10 @@
+ 
+ ### BEGIN INIT INFO
+ # Provides: vz
+-# required-start: $network $remote_fs $syslog
+-# required-stop:  $network $remote_fs $syslog
+-# Should-Start:  sshd
+-# Should-Stop:  sshd
++# Required-start: $network $remote_fs $syslog
++# Required-stop:  $network $remote_fs $syslog
++# Should-Start:  sshd vzeventd
++# Should-Stop:  sshd vzeventd
+ # Default-Start: 2 3 4 5
+ # Default-Stop: 0 1 6
+ # Short-Description: OpenVZ startup script
+@@ -38,19 +38,12 @@
+ 
+ # This line is needed to cheat /etc/init.d/rc who expects action word
+ 
+-VZCONF=@PKGCONFDIR@/vz.conf
+-
+-[ -f ${VZCONF} ] || exit 0
+-. ${VZCONF}
+-[ "${VIRTUOZZO}" = "no" ] && exit 0
+-
+-VZCTL=@SBINDIR@/vzctl
+-[ -x ${VZCTL} ] || exit 0
++. /etc/init.d/vzfunctions
+ 
+ VZQUOTA=@SBINDIR@/vzquota
+ CONFIG_DIR=@PKGCONFDIR@/conf
+-LOCKFILE=/var/lock/subsys/vz_lock
+-SUBSYS_VZ=/var/lock/subsys/vz
++LOCKFILE=$VARLOCK/vz_lock
++SUBSYS_VZ=$VARLOCK/vz
+ VESTAT=/proc/vz/vestat
+ VZDEV=venet0
+ PRELOAD_MODULES=
+@@ -78,25 +71,6 @@ if [ "${MODULES_DISABLED}" != "yes" ]; then
+ fi
+ 
+ 
+-rc_done='..done'
+-rc_failed='..failed'
+-# Source function library.
+-if [ -r /etc/init.d/functions ]; then
+-	source /etc/init.d/functions
+-	if [ -r /etc/redhat-release ] || [ -r /etc/centos-release ]; then
+-		DISTR=redhat
+-	fi
+-elif [ -r /etc/rc.status ]; then
+-	source /etc/rc.status
+-	if [ -r /etc/SuSE-release ]; then
+-		DISTR=suse
+-	fi
+-elif [ -r /etc/debian_version ]; then
+-	DISTR=debian
+-	LOCKFILE=/var/lock/vz_lock
+-	SUBSYS_VZ=/var/lock/vz
+-fi
+-
+ VEINFO=""
+ RETVAL=0
+ # Number of the containers to stop in parallel.
+@@ -250,58 +224,6 @@ get_veinfo()
+ 	return 0
+ }
+ 
+-print_success()
+-{
+-	if [ "$DISTR" = "redhat" ]; then
+-		echo_success
+-	else
+-		echo -n "$rc_done"
+-	fi
+-	echo
+-}
+-
+-print_failure()
+-{
+-	echo -n "$1"
+-	if [ "$DISTR" = "redhat" ]; then
+-		failure $"$1"
+-	else
+-		echo -n "$rc_failed"
+-	fi
+-	echo
+-}
+-
+-print_warning()
+-{
+-	if [ "$DISTR" = "redhat" ]; then
+-		echo -n "$1"
+-		warning $"$1"
+-	else
+-		echo -n "- Warning: $1 "
+-	fi
+-	echo
+-}
+-
+-# Calls either print_success or print_failure, depending on $?
+-# Optional argument $1 -- an error string passed to print_failure.
+-print_result()
+-{
+-	if [ $? -eq 0 ] ; then
+-		print_success
+-	else
+-		print_failure "$1"
+-	fi
+-}
+-
+-__echo()
+-{
+-	if [ "$DISTR" = "redhat" ]; then
+-		echo -n $"$1"
+-	else
+-		echo -n "$1"
+-	fi
+-}
+-
+ is_running()
+ {
+ 	get_veinfo || return 1
+diff --git a/etc/init.d/vzeventd-gentoo.in b/etc/init.d/vzeventd-gentoo.in
+new file mode 100644
+index 0000000..e8fe64e
+--- /dev/null
++++ b/etc/init.d/vzeventd-gentoo.in
+@@ -0,0 +1,39 @@
++#!/sbin/runscript
++
++depend() {
++	use net
++	before vz
++}
++
++check_config() {
++# if we don't want openvz running, say so
++	[ "${VIRTUOZZO}" = "yes" ] || return 1
++	: ${VZEVENTD:=@SBINDIR@/vzeventd}
++}
++
++start() {
++	check_config || return
++	ebegin "Loading vzevent module"
++	modprobe -r vzevent >/dev/null 2>&1
++	modprobe vzevent reboot_event=1 >/dev/null 2>&1
++	rc=$?
++	if [ ${rc} -ne 0 ]; then
++		eend ${rc} "failed"
++		return ${rc}
++	fi
++	eend ${rc}
++
++	ebegin "Starting vzeventd"
++	start-stop-daemon --start --exec $VZEVENTD \
++		--pidfile /var/run/vzeventd.pid \
++		-- ${VZEVENTD_OPTS}
++	eend $?
++}
++
++stop() {
++	check_config || return
++	ebegin "Stopping vzeventd"
++		start-stop-daemon --stop --exec $VZEVENTD \
++		--pidfile /var/run/vzeventd.pid
++	eend $?
++}
+diff --git a/etc/init.d/vzeventd-redhat.in b/etc/init.d/vzeventd-redhat.in
+new file mode 100755
+index 0000000..d992e46
+--- /dev/null
++++ b/etc/init.d/vzeventd-redhat.in
+@@ -0,0 +1,104 @@
++#!/bin/bash
++#
++# vzeventd	This shell script takes care of starting and stopping
++#               vzeventd daemon for OpenVZ.
++#
++# chkconfig: 2345 95 89
++# description: vzeventd is OpenVZ events daemon. \
++# It takes care of events sent by the OpenVZ kernel and performs required \
++# actions associated with those events.
++
++### BEGIN INIT INFO
++# Provides: vzeventd
++# Default-Start: 2 3 4 5
++# Default-Stop: 0 1 6
++# X-Start-Before: vz
++# X-Stop-After: vz
++# Short-Description: start and stop vzeventd
++# Description: ntpd is the NTPv4 s OpenVZ events daemon.
++#              It takes care of events sent by the OpenVZ kernel
++#              and performs required actions associated with those events.
++### END INIT INFO
++
++. /etc/init.d/vzfunctions
++
++prog=vzeventd
++lockfile=$VARLOCK/$prog
++
++load_module() {
++	modprobe vzeventd reboot_event=1
++}
++
++check() {
++	local param=/sys/module/vzevent/parameters/reboot_event
++
++	__echo "Checking vzevent kernel module ..."
++
++	if ! lsmod | fgrep -qw vzeventd; then
++		print_failure
++		return 1
++	fi
++	if ! cat $param | fgrep -qw 1; then
++		print_failure
++		print_warning "vzevent module should be loaded with " \
++				"reboot_event=1 parameter"
++		echo
++		return 1
++	fi
++	print_success
++	return 0
++}
++
++start() {
++	[ "$EUID" != "0" ] && exit 4
++	[ -x @SBINDIR@/vzeventd ] || exit 5
++	[ -r /etc/sysconfig/vzeventd ] && . /etc/sysconfig/vzeventd
++
++	check || exit 1
++
++	echo -n $"Starting $prog: "
++	daemon $prog $OPTIONS
++	RETVAL=$?
++	echo
++	[ $RETVAL -eq 0 ] && touch $lockfile
++	return $RETVAL
++}
++
++stop() {
++	[ "$EUID" != "0" ] && exit 4
++	echo -n $"Shutting down $prog: "
++	killproc $prog
++	RETVAL=$?
++	echo
++	[ $RETVAL -eq 0 ] && rm -f $lockfile
++	return $RETVAL
++}
++
++# See how we were called.
++case "$1" in
++   start)
++	start
++	;;
++   stop)
++	stop
++	;;
++   status)
++	status $prog
++	;;
++   restart|force-reload)
++	stop
++	start
++	;;
++   try-restart|condrestart)
++	if status $prog > /dev/null; then
++		stop
++		start
++	fi
++	;;
++   reload)
++	exit 3
++	;;
++   *)
++	echo $"Usage: $0 {start|stop|status|restart|try-restart|force-reload}"
++	exit 2
++esac
+diff --git a/etc/init.d/vzfunctions.in b/etc/init.d/vzfunctions.in
+new file mode 100644
+index 0000000..b84a6e4
+--- /dev/null
++++ b/etc/init.d/vzfunctions.in
+@@ -0,0 +1,86 @@
++#!/bin/sh
++# A few compatibility functions, to make it possible having the same
++# OpenVZ init scripts for Red Hat/Fedora/Debian/SUSE.
++
++VZCONF=@PKGCONFDIR@/vz.conf
++[ -f ${VZCONF} ] || exit 0
++. ${VZCONF}
++[ "${VIRTUOZZO}" = "no" ] && exit 0
++
++VZCTL=@SBINDIR@/vzctl
++[ -x ${VZCTL} ] || exit 0
++
++rc_done='..done'
++rc_failed='..failed'
++
++VARLOCK=/var/lock/subsys
++
++# Source function library.
++if [ -r /etc/init.d/functions ]; then
++	source /etc/init.d/functions
++	if [ -r /etc/redhat-release ] || [ -r /etc/centos-release ]; then
++		DISTR=redhat
++	fi
++elif [ -r /etc/rc.status ]; then
++	source /etc/rc.status
++	if [ -r /etc/SuSE-release ]; then
++		DISTR=suse
++	fi
++elif [ -r /etc/debian_version ]; then
++	DISTR=debian
++	VARLOCK=/var/lock
++fi
++
++print_success()
++{
++	if [ "$DISTR" = "redhat" ]; then
++		echo_success
++	else
++		echo -n "$rc_done"
++	fi
++	echo
++}
++
++print_failure()
++{
++	echo -n "$1"
++	if [ "$DISTR" = "redhat" ]; then
++		failure $"$1"
++	else
++		echo -n "$rc_failed"
++	fi
++	echo
++}
++
++print_warning()
++{
++	if [ "$DISTR" = "redhat" ]; then
++		echo -n "$1"
++		warning $"$1"
++	else
++		echo -n "- Warning: $1 "
++	fi
++	echo
++}
++
++# Calls either print_success or print_failure, depending on $?
++# Optional argument $1 -- an error string passed to print_failure.
++print_result()
++{
++	if [ $? -eq 0 ] ; then
++		print_success
++	else
++		print_failure "$1"
++	fi
++}
++
++__echo()
++{
++	if [ "$DISTR" = "redhat" ]; then
++		echo -n $"$1"
++	else
++		echo -n "$1"
++	fi
++}
++
++
+diff --git a/scripts/Makefile.am b/scripts/Makefile.am
+index 1887315..1b742cd 100644
+--- a/scripts/Makefile.am
++++ b/scripts/Makefile.am
+@@ -21,7 +21,9 @@ vzlib_SCRIPTS = \
+ 	vps-create \
+ 	vps-functions \
+ 	vps-net_add \
+-	vps-net_del
++	vps-net_del \
++	vzevent-stop \
++	vzevent-reboot
+ 
+ vzcron_SCRIPTS = \
+ 	vpsnetclean \
+diff --git a/scripts/vzevent-reboot.in b/scripts/vzevent-reboot.in
+new file mode 100755
+index 0000000..afbd7c5
+--- /dev/null
++++ b/scripts/vzevent-reboot.in
+@@ -0,0 +1,9 @@
++#!/bin/sh
++I=1
++while vzctl --quiet status $VEID | fgrep -w running; do
++	sleep $I
++	I=$((I+1))
++	test $I -gt 10 && exit 1
++done
++
++vzctl --quiet start $VEID
+diff --git a/scripts/vzevent-stop.in b/scripts/vzevent-stop.in
+new file mode 100755
+index 0000000..72aa957
+--- /dev/null
++++ b/scripts/vzevent-stop.in
+@@ -0,0 +1,57 @@
++#!/bin/sh
++#  Copyright (C) 2000-2010, Parallels, Inc. All rights reserved.
++#
++#  This program is free software; you can redistribute it and/or modify
++#  it under the terms of the GNU General Public License as published by
++#  the Free Software Foundation; either version 2 of the License, or
++#  (at your option) any later version.
++#
++#  This program is distributed in the hope that it will be useful,
++#  but WITHOUT ANY WARRANTY; without even the implied warranty of
++#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++#  GNU General Public License for more details.
++#
++#  You should have received a copy of the GNU General Public License
++#  along with this program; if not, write to the Free Software
++#  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
++#
++# This script is run by vzeventd after CT is stopped. In case it was stopped
++# not by vzctl, but from inside the CT itself (e.g. by running "halt" or
++# "shutdown", we need to unmount it and clean its network resources.
++
++VEINFO=/proc/vz/veinfo
++test -n "$VEID" || exit 1
++test -f @PKGLIBDIR@/scripts/vps-functions || exit 1
++. @PKGLIBDIR@/scripts/vps-functions
++
++clear_ve_net()
++{
++	local ip ve_ips all_ips
++
++	all_ips=$(cat "$VEINFO" 2>/dev/null) || return
++	ve_ips=$(cat "$VE_STATE_DIR/$VEID" 2>/dev/null) || return
++	vzgetnetdev
++	for ip in $ve_ips; do
++		if ! echo "$all_ips" | fgrep -qw "$ip"; then
++			vzdelrouting "$ip"
++			vzarp del "$ip"
++		fi
++	done
++}
++
++I=1
++while vzctl --quiet status $VEID | fgrep -w running; do
++	sleep $I
++	I=$((I+1))
++	test $I -gt 10 && exit 1
++done
++
++if vzctl --quiet status $VEID | fgrep -w mounted; then
++	vzctl --quiet umount $VEID
++fi
++
++if test -f "$VE_STATE_DIR/$VEID"; then
++	clear_ve_net
++	rm -f "$VE_STATE_DIR/$VEID"
++fi
++exit 0
+diff --git a/src/.gitignore b/src/.gitignore
+index 9997423..5a63195 100644
+--- a/src/.gitignore
++++ b/src/.gitignore
+@@ -11,3 +11,4 @@ vzctl
+ vzlist
+ vzmemcheck
+ vzsplit
++vzeventd
+diff --git a/src/Makefile.am b/src/Makefile.am
+index 41b4004..1745362 100644
+--- a/src/Makefile.am
++++ b/src/Makefile.am
+@@ -32,7 +32,8 @@ sbin_PROGRAMS = arpsend \
+                 vzctl \
+                 vzlist \
+                 vzmemcheck \
+-                vzsplit
++                vzsplit \
++                vzeventd
+ 
+ VZCTL_LIBS = $(top_builddir)/src/lib/libvzctl.la
+ 
+@@ -62,3 +63,6 @@ vzmemcheck_LDADD = $(VZCTL_LIBS)
+ 
+ vzsplit_SOURCES = vzsplit.c
+ vzsplit_LDADD   = $(VZCTL_LIBS)
++
++vzeventd_SOURCES = vzeventd.c
++vzeventd_LDADD = $(VZCTL_LIBS)
+diff --git a/src/vzeventd.c b/src/vzeventd.c
+new file mode 100644
+index 0000000..73673db
+--- /dev/null
++++ b/src/vzeventd.c
+@@ -0,0 +1,294 @@
++/*
++ *  Copyright (C) 2010, Parallels, Inc. All rights reserved.
++ *
++ *  This program is free software; you can redistribute it and/or modify
++ *  it under the terms of the GNU General Public License as published by
++ *  the Free Software Foundation; either version 2 of the License, or
++ *  (at your option) any later version.
++ *
++ *  This program is distributed in the hope that it will be useful,
++ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
++ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ *  GNU General Public License for more details.
++ *
++ *  You should have received a copy of the GNU General Public License
++ *  along with this program; if not, write to the Free Software
++ *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
++ */
++
++#ifndef _GNU_SOURCE
++#define _GNU_SOURCE
++#endif
++
++#include <sys/types.h>
++#include <sys/socket.h>
++#include <linux/netlink.h>
++#include <string.h>
++#include <unistd.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <errno.h>
++#include <limits.h>
++#include <wait.h>
++
++#include "types.h"
++#include "logger.h"
++#include "config.h"
++#include "vzerror.h"
++#include "script.h"
++
++#define NETLINK_UEVENT	31	/* from kernel/ve/vzevent.c */
++
++static void child_handler(int signo, siginfo_t * sig, void * uctx)
++{
++	int status;
++
++	wait(&status);
++	if (WIFEXITED(status)) {
++		if (WEXITSTATUS(status) != 0)
++			logger(-1, 0, "Child %d failed with exit code %d",
++					sig->si_pid, WEXITSTATUS(status));
++		else if (WIFSIGNALED(status))
++			logger(-1, 0, "Child %d was terminated by signal %d",
++					sig->si_pid, WTERMSIG(status));
++		else
++			logger(1, 0, "Child %d exited with success",
++					sig->si_pid);
++	}
++}
++
++static int run_event_script(envid_t ctid, const char *event)
++{
++	char script[sizeof(LIB_SCRIPTS_DIR)*2];
++	int pid;
++
++	snprintf(script, sizeof(script), "%svzevent-%s",
++			LIB_SCRIPTS_DIR, event);
++	logger(1, 0, "Running %s event script", event);
++
++	pid = fork();
++	switch (pid) {
++		case -1:
++			logger(-1, errno, "Failed to fork()");
++			return 1;
++		case 0:
++			exit(run_pre_script(ctid, script));
++		default:
++			logger(1, 0, "Forked child %d for %s event",
++					pid, event);
++	}
++	return 0;
++}
++
++static int parse_event(char *buf)
++{
++	char *ctidp, *endp, *name;
++	long int t;
++	int len;
++	envid_t ctid;
++	const int min_event_len = 7; /* ve-stop */
++
++	/* Parse CTID */
++	if ((ctidp = strchr(buf, '@')) == NULL) {
++		logger(-1, 0, "Bad message: can't find CTID");
++		return -1;
++	}
++
++	/* Bail out of definitely bad/unknown events */
++	len = ctidp - buf;
++	if (len < min_event_len)
++		goto ev_unknown;
++	if (! (buf[0] == 'v') && (buf[1] == 'e') && (buf[2] == '-') )
++		goto ev_unknown;
++	name = buf + 3; /* Omit common "ve-" prefix */
++
++	*ctidp++ = '\0';
++	t = strtol(ctidp, &endp, 10);
++	if (*endp != '\0') {
++		logger(-1, 0, "Garbage in CTID in message: %s (endp=%s)",
++				ctidp, endp);
++		return -1;
++	}
++	if ((t <= 0) || (t > INT_MAX)) {
++		logger(-1, 0, "Bad CTID in message: %s", ctidp);
++		return -1;
++	}
++	ctid = (envid_t)t;
++	set_log_ctid(ctid);
++	logger(2, 0, "CTID = %d, event = %s (len=%d)", ctid, buf, len);
++
++	/* Continue parsing event name */
++
++	switch (len - 3) {
++		case 4:
++			if (strncmp(name, "stop", 4) == 0)
++				goto ev_stop;
++			goto ev_unknown;
++		case 5:
++			if (strncmp(name, "start", 5) == 0)
++				goto ev_start;
++			else if (strncmp(name, "mount", 5) == 0)
++				goto ev_mount;
++			goto ev_unknown;
++		case 6:
++			if (strncmp(name, "reboot", 6) == 0)
++				goto ev_reboot;
++			else if (strncmp(name, "umount", 6) == 0)
++				goto ev_umount;
++			goto ev_unknown;
++		default:
++			goto ev_unknown;
++	}
++
++ev_unknown:
++	logger(-1, 0, "Unknown event: %s", buf);
++	return -1;
++
++ev_mount:
++ev_umount:
++ev_start:
++	logger(2, 0, "Got %s event (ignored)", name);
++	/* Do nothing */
++	return 0;
++ev_reboot:
++	return run_event_script(ctid, "reboot");
++ev_stop:
++	return run_event_script(ctid, "stop");
++}
++
++static int read_events(int fd, struct sockaddr_nl *sa)
++{
++	int len;
++	char buf[32];
++	struct iovec iov = { buf, sizeof(buf) };
++	struct msghdr msg;
++	int ret;
++
++	while (1) {
++		memset(&msg, 0, sizeof(msg));
++		msg.msg_name = (void *)&sa;
++		msg.msg_namelen = sizeof(sa);
++		msg.msg_iov = &iov;
++		msg.msg_iovlen = 1;
++
++		len = recvmsg(fd, &msg, 0);
++		if (len > 0) {
++			buf[len] = '\0';
++			parse_event(buf);
++			set_log_ctid(0);
++		} else if (len < 0) {
++			if (errno != EINTR) {
++				logger(-1, errno, "Error in recvmsg() "
++						" (ret=%d, errno=%d)",
++						len, errno);
++				ret = 1;
++				break;
++			}
++		} else /* len==0 */ {
++			logger(0, 0, "Connection closed");
++			ret = 0;
++			break;
++		}
++	}
++	close(fd);
++	logger(0, 0, "Exiting...");
++	return ret;
++}
++
++static int daemon_read_events(int fd, struct sockaddr_nl *sa)
++{
++	if (daemon(0, 0) < 0) {
++		logger(-1, errno, "Error in daemon()");
++		return 1;
++	}
++	/* Now make logger stop printing to stdout/stderr */
++	set_log_quiet(1);
++	return read_events(fd, sa);
++}
++
++static int prepare_read_events(int daemonize)
++{
++	int fd;
++	struct sockaddr_nl sa;
++	struct sigaction act;
++
++	fd = socket(AF_NETLINK, SOCK_RAW, NETLINK_UEVENT);
++	if (fd < 0) {
++		logger(-1, errno, "Error in socket()");
++		return 1;
++	}
++
++	memset(&sa, 0, sizeof(sa));
++	sa.nl_family = AF_NETLINK;
++	sa.nl_groups = 1;
++	if (bind(fd, (struct sockaddr *)&sa, sizeof(sa)) < 0) {
++		if (errno == ENOENT)
++			logger(-1, 0, "Looks like vzevent kernel module "
++					"is not loaded; exiting.");
++		else
++			logger(-1, errno, "Error in bind()");
++		close(fd);
++		return 1;
++	}
++
++	sigemptyset(&act.sa_mask);
++	act.sa_sigaction = child_handler;
++	act.sa_flags = SA_NOCLDSTOP | SA_SIGINFO;
++	sigaction(SIGCHLD, &act, NULL);
++
++	logger(0, 0, "Started");
++
++	if (daemonize != 0)
++		return daemon_read_events(fd, &sa);
++	else
++		return read_events(fd, &sa);
++}
++
++static void usage()
++{
++	printf(
++"Usage: vzeventd [options]\n"
++"	-v	increase verbosity (can be used multiple times)\n"
++"	-d	debug (do not daemonize, run in foreground)\n"
++"	-h	print this help message\n"
++	);
++}
++
++int main(int argc, char **argv)
++{
++	struct vps_param *param = NULL;
++	int daemonize = 1;
++	int opt, verbose = 0;
++
++	while ((opt = getopt(argc, argv, "dv")) != -1) {
++		switch (opt) {
++		case 'd':
++			daemonize = 0;
++			verbose++;
++			break;
++		case 'v':
++			verbose++;
++			break;
++		case 'h':
++			usage();
++			return 0;
++		default:
++			usage();
++			return 1;
++		}
++	}
++
++	param = init_vps_param();
++	/* Read global config file */
++	if (vps_parse_config(0, GLOBAL_CFG, param, NULL)) {
++		fprintf(stderr, "Global configuration file %s not found\n",
++				GLOBAL_CFG);
++		return VZ_NOCONFIG;
++	}
++
++	init_log(param->log.log_file, 0, param->log.enable != NO,
++			param->log.level + verbose,
++			0, "vzeventd");
++
++	return prepare_read_events(daemonize);
++}
+diff --git a/vzctl.spec b/vzctl.spec
+index 889162a..f7c3c59 100644
+--- a/vzctl.spec
++++ b/vzctl.spec
+@@ -30,6 +30,7 @@ Source: http://download.openvz.org/utils/%{name}/%{version}/src/%{name}-%{versio
+ ExclusiveOS: Linux
+ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
+ Requires: vzkernel
++Requires: vzeventmod
+ URL: http://openvz.org/
+ # these reqs are for vz helper scripts
+ Requires: bash
+@@ -80,6 +81,7 @@ rm -rf $RPM_BUILD_ROOT
+ %files
+ %defattr(-,root,root)
+ %attr(755,root,root) %{_initddir}/vz
++%attr(755,root,root) %{_initddir}/vzeventd
+ %ghost /etc/cron.d/vz
+ %dir %attr(755,root,root) %{_lockdir}
+ %dir %attr(755,root,root) %{_dumpdir}
+@@ -95,6 +97,7 @@ rm -rf $RPM_BUILD_ROOT
+ %dir %attr(755,root,root) %{_distscriptdir}
+ %dir %attr(755,root,root) %{_vzdir}
+ %attr(755,root,root) %{_sbindir}/vzctl
++%attr(755,root,root) %{_sbindir}/vzeventd
+ %attr(755,root,root) %{_sbindir}/arpsend
+ %attr(755,root,root) %{_sbindir}/ndsend
+ %attr(755,root,root) %{_sbindir}/vzsplit
+@@ -155,6 +158,7 @@ if [ -f %{_configdir}/vz.conf ]; then
+ 	fi
+ fi
+ /sbin/chkconfig --add vz > /dev/null 2>&1
++/sbin/chkconfig --add vzeventd > /dev/null 2>&1
+ 
+ if [ -f /etc/SuSE-release ]; then
+ 	NET_CFG='ifdown-venet ifup-venet'
+@@ -185,6 +189,7 @@ fi
+ %preun
+ if [ $1 = 0 ]; then
+ 	/sbin/chkconfig --del vz >/dev/null 2>&1
++	/sbin/chkconfig --del vzeventd >/dev/null 2>&1
+ fi
+ 
+ %package lib
+@@ -203,6 +208,9 @@ Containers control API library
+ %attr(755,root,root) %{_pkglibdir}/scripts/vps-net_add
+ %attr(755,root,root) %{_pkglibdir}/scripts/vps-net_del
+ %attr(755,root,root) %{_pkglibdir}/scripts/vps-create
++%attr(755,root,root) %{_pkglibdir}/scripts/vzevent-stop
++%attr(755,root,root) %{_pkglibdir}/scripts/vzevent-reboot
++
+ 
+ %changelog
+ * Wed Jun 13 2007 Andy Shevchenko <andriy@asplinux.com.ua> - 3.0.17-1

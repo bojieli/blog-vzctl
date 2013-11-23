@@ -1,0 +1,45 @@
+From: Kir Kolyshkin <kir@openvz.org>
+Date: Fri, 3 Sep 2010 17:12:03 +0000 (+0400)
+Subject: Revert "list2str(): removed duplicated statement"
+X-Git-Tag: vzctl-3.0.24.2~4
+X-Git-Url: http://git.openvz.org/?p=vzctl;a=commitdiff_plain;h=acd709407ade5aca961a37d29862c42cf1bd9b6a;hp=3cc8275c132e3e12072af47997bcfe46a03c1572
+
+Revert "list2str(): removed duplicated statement"
+
+list2str_c produces wrong string when list is empty:
+
+	# vzctl set <vmid> --ipdel all --save
+
+produces
+
+	IP_ADDRESS="
+
+Note a single quote (instead of "").
+
+http://bugzilla.openvz.org/1628
+
+This reverts commit 0d59c4f8db21a6a707227b24d3f66c34ec9d1cc3.
+
+Reported-by: Dietmar Maurer <dietmar@maurer-it.com>
+(cherry picked from commit 732cfbbeba24973bb827bee1f2f2c76ec381aae4)
+---
+
+diff --git a/src/lib/list.c b/src/lib/list.c
+index 4205376..2da99d8 100644
+--- a/src/lib/list.c
++++ b/src/lib/list.c
+@@ -48,10 +48,11 @@ char *list2str_c(char *name, char c, list_head_t *head)
+ 	}
+ 	if (c)
+ 		sp += sprintf(sp, "%c", c);
+-
+-	if (list_empty(head))
++	if (list_empty(head)) {
++		if (c)
++			sprintf(sp, "%c", c);
+ 		return buf;
+-
++	}
+ 	list_for_each(p, head, list) {
+ 		if (p->val == NULL)
+ 			continue;

@@ -1,0 +1,23 @@
+Source: vzctl
+Section: admin
+Priority: optional
+Maintainer: Ola Lundqvist <opal@debian.org>
+Build-Depends: debhelper (>= 7.0.0)
+Standards-Version: 3.9.0
+
+Package: vzctl
+Architecture: i386 ia64 amd64 powerpc sparc
+Depends: ${shlibs:Depends}, ${misc:Depends}, iproute, vzquota
+Recommends: rsync
+Description: server virtualization solution - control tools
+ OpenVZ is an Operating System-level server virtualization solution, built
+ on Linux. OpenVZ creates isolated, secure virtual private servers on a single
+ physical server enabling better server utilization and ensuring that
+ applications do not conflict. Each VPS performs and executes exactly like a
+ stand-alone server; VPSs can be rebooted independently and have root access,
+ users, IP addresses, memory, processes, files, applications, system libraries
+ and configuration files.
+ .
+ This package contain the control tool to manipulate the virtual servers.
+ .
+ OBSERVE! You need a Linux kernel patched with openvz support.

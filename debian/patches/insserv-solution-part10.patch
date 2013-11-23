@@ -1,0 +1,68 @@
+From: Kir Kolyshkin <kir@openvz.org>
+Date: Wed, 8 Sep 2010 08:51:17 +0000 (+0400)
+Subject: init.d/vzeventd: fix to support Debian and SUSE
+X-Git-Url: http://git.openvz.org/?p=vzctl;a=commitdiff_plain;h=043e3cc76e590574d736f9830098d6bddf5bba76;hp=22cfbfa17a63c536eb8f69d305c60289dbdaf290
+
+init.d/vzeventd: fix to support Debian and SUSE
+
+Well, this wasn't tested yet, but I hope I did it right.
+
+Signed-off-by: Kir Kolyshkin <kir@openvz.org>
+---
+
+diff --git a/etc/init.d/initd-functions.in b/etc/init.d/initd-functions.in
+index b84a6e4..b6bdbc7 100644
+--- a/etc/init.d/initd-functions.in
++++ b/etc/init.d/initd-functions.in
+@@ -83,4 +83,29 @@ __echo()
+ 	fi
+ }
+ 
++vzdaemon_start()
++{
++	case DISTR in
++	   redhat)
++		daemon $*
++		;;
++	   suse)
++		startproc $*
++		;;
++	   debian)
++		start-stop-daemon --start --quiet --exec $*
++		;;
++	esac
++}
+ 
++vzdaemon_stop()
++{
++	case DISTR in
++	   redhat|suse)
++		killproc $*
++		;;
++	   debian)
++		start-stop-daemon --stop --quiet --exec $*
++		;;
++	esac
++}
+diff --git a/etc/init.d/vzeventd-redhat.in b/etc/init.d/vzeventd-redhat.in
+index 14c3130..ce70976 100755
+--- a/etc/init.d/vzeventd-redhat.in
++++ b/etc/init.d/vzeventd-redhat.in
+@@ -60,7 +60,7 @@ start() {
+ 	check || exit 1
+ 
+ 	echo -n $"Starting $prog: "
+-	daemon $prog $OPTIONS
++	vzdaemon_start $prog $OPTIONS
+ 	RETVAL=$?
+ 	echo
+ 	[ $RETVAL -eq 0 ] && touch $lockfile
+@@ -70,7 +70,7 @@ start() {
+ stop() {
+ 	[ "$EUID" != "0" ] && exit 4
+ 	echo -n $"Shutting down $prog: "
+-	killproc $prog
++	vzdaemon_stop $prog
+ 	RETVAL=$?
+ 	echo
+ 	[ $RETVAL -eq 0 ] && rm -f $lockfile

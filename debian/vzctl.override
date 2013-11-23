@@ -1,0 +1,8 @@
+vzctl: package-name-doesnt-match-sonames libvzctl-0.0.3
+vzctl: package-contains-empty-directory usr/lib/vzctl/modules/
+vzctl: script-calls-init-script-directly ./etc/vz/dists/scripts/debian-add_ip.sh:168
+vzctl: script-calls-init-script-directly ./etc/vz/dists/scripts/debian-del_ip.sh:43
+vzctl: script-calls-init-script-directly ./etc/vz/dists/scripts/gentoo-add_ip.sh:115
+vzctl: script-calls-init-script-directly ./etc/vz/dists/scripts/gentoo-del_ip.sh:49
+vzctl: script-calls-init-script-directly ./etc/vz/dists/scripts/redhat-add_ip.sh:218
+vzctl: script-calls-init-script-directly ./etc/vz/dists/scripts/suse-7.x_add_ip.sh:87

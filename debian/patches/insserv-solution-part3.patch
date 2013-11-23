@@ -1,0 +1,45 @@
+From: Kir Kolyshkin <kir@openvz.org>
+Date: Tue, 31 Aug 2010 15:59:00 +0000 (+0400)
+Subject: logger: add set_log_quiet() and set_log_ctid()
+X-Git-Url: http://git.openvz.org/?p=vzctl;a=commitdiff_plain;h=f3bf51833e4a1533f9f92132d1872d84e106b3cf
+
+logger: add set_log_quiet() and set_log_ctid()
+
+In principle these two can be set using init_log(), but it has too
+many arguments, so provide a separate functions (to be used by
+vzeventd).
+
+Signed-off-by: Kir Kolyshkin <kir@openvz.org>
+---
+
+diff --git a/include/logger.h b/include/logger.h
+index afe4040..b89215f 100644
+--- a/include/logger.h
++++ b/include/logger.h
+@@ -67,5 +67,7 @@ void free_log();
+ 
+ void set_log_level(int level);
+ void set_log_verbose(int level);
++void set_log_ctid(envid_t id);
++void set_log_quiet(int quiet);
+ 
+ #endif
+diff --git a/src/lib/logger.c b/src/lib/logger.c
+index a355f04..c490ea5 100644
+--- a/src/lib/logger.c
++++ b/src/lib/logger.c
+@@ -113,6 +113,14 @@ void set_log_verbose(int level)
+ 	g_log.verbose = level;
+ }
+ 
++void set_log_ctid(envid_t id) {
++	g_log.veid = id;
++}
++
++void set_log_quiet(int quiet) {
++	g_log.quiet = quiet;
++}
++
+ int init_log(char *file, envid_t veid, int enable, int level, int quiet,
+ 	const char *progname)
+ {

@@ -1,0 +1,45 @@
+From: Kir Kolyshkin <kir@openvz.org>
+Date: Fri, 3 Sep 2010 18:06:13 +0000 (+0400)
+Subject: init.d/vzeventd: fixes
+X-Git-Url: http://git.openvz.org/?p=vzctl;a=commitdiff_plain;h=2da942ca98bf44637acac297e12763b9012670c7
+
+init.d/vzeventd: fixes
+
+1. Module name is vzevent not vzeventd
+2. Do not forget to load module on start
+
+This is an addition to commit 4cc6257616e1a725650d6b026a42d17cd1c3cce8
+
+Signed-off-by: Kir Kolyshkin <kir@openvz.org>
+---
+
+diff --git a/etc/init.d/vzeventd-redhat.in b/etc/init.d/vzeventd-redhat.in
+index d992e46..447b0e5 100755
+--- a/etc/init.d/vzeventd-redhat.in
++++ b/etc/init.d/vzeventd-redhat.in
+@@ -26,7 +26,7 @@ prog=vzeventd
+ lockfile=$VARLOCK/$prog
+ 
+ load_module() {
+-	modprobe vzeventd reboot_event=1
++	modprobe vzevent reboot_event=1
+ }
+ 
+ check() {
+@@ -34,7 +34,7 @@ check() {
+ 
+ 	__echo "Checking vzevent kernel module ..."
+ 
+-	if ! lsmod | fgrep -qw vzeventd; then
++	if ! lsmod | fgrep -qw vzevent; then
+ 		print_failure
+ 		return 1
+ 	fi
+@@ -54,6 +54,7 @@ start() {
+ 	[ -x @SBINDIR@/vzeventd ] || exit 5
+ 	[ -r /etc/sysconfig/vzeventd ] && . /etc/sysconfig/vzeventd
+ 
++	load_module
+ 	check || exit 1
+ 
+ 	echo -n $"Starting $prog: "

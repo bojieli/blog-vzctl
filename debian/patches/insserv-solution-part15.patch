@@ -1,0 +1,35 @@
+From: Kir Kolyshkin <kir@openvz.org>
+Date: Fri, 29 Oct 2010 13:04:15 +0000 (+0400)
+Subject: initd-functions: fix a typo
+X-Git-Url: http://git.openvz.org/?p=vzctl;a=commitdiff_plain;h=3527cc269bb51d48e0f511fbf7a807ad56c223d5;hp=37fa0deb560c0df572a83aaf5868ca2c51161a4b
+
+initd-functions: fix a typo
+
+s/DISTR/$DISTR/ in shell code...
+
+Reported-by: "Mehdi Dogguy" <mehdi@dogguy.org>
+Signed-off-by: Kir Kolyshkin <kir@openvz.org>
+---
+
+diff --git a/etc/init.d/initd-functions.in b/etc/init.d/initd-functions.in
+index 284d2e0..e90b019 100644
+--- a/etc/init.d/initd-functions.in
++++ b/etc/init.d/initd-functions.in
+@@ -84,7 +84,7 @@ __echo()
+ 
+ vzdaemon_start()
+ {
+-	case DISTR in
++	case $DISTR in
+ 	   redhat)
+ 		daemon $*
+ 		;;
+@@ -99,7 +99,7 @@ vzdaemon_start()
+ 
+ vzdaemon_stop()
+ {
+-	case DISTR in
++	case $DISTR in
+ 	   redhat|suse)
+ 		killproc $*
+ 		;;

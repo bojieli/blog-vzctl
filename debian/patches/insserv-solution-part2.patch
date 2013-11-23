@@ -1,0 +1,740 @@
+From: Kir Kolyshkin <kir@openvz.org>
+Date: Fri, 3 Sep 2010 12:17:09 +0000 (+0400)
+Subject: Remove cron functionality
+X-Git-Url: http://git.openvz.org/?p=vzctl;a=commitdiff_plain;h=5b35797753892bfa507b2aa0a1207f0c97bba005;hp=4cc6257616e1a725650d6b026a42d17cd1c3cce8
+
+Remove cron functionality
+
+Previous commit adds vzeventd, so that makes cron trickery and scripts
+obsolete now.
+
+This should solve bugs like #1423.
+
+http://bugzilla.openvz.org/1423
+
+Signed-off-by: Kir Kolyshkin <kir@openvz.org>
+---
+
+diff --git a/INSTALL b/INSTALL
+index 5c6aa3d..1d17414 100644
+--- a/INSTALL
++++ b/INSTALL
+@@ -48,13 +48,6 @@ Disables installation of udev file describing vzctl device (/dev/vzctl).
+ This is enabled by default since all the modern Linux distributions use udev.
+ Supply this option in case you do not use udev on your system.
+ 
+-	--disable-cron
+-
+-Disables installation of cron files required by vzctl. Those are used to run
+-periodical jobs required by OpenVZ, such as restarting CTs and cleaning up
+-host system routing table. Supply this option if you do not use cron daemon
+-on your system.
+-
+ You can also supply environment variables like CC and CFLAGS to configure,
+ for example:
+ 
+diff --git a/configure.ac b/configure.ac
+index e46db32..2ae57f5 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -20,7 +20,7 @@ AC_PREREQ(2.59)
+ AC_INIT(vzctl, 3.0.24, devel@openvz.org)
+ 
+ # Change sysconfdir default since otherwise some important files
+-# (an initscript, files for logrotate, cron, and udev) will be installed
++# (an initscript, files for logrotate, and udev) will be installed
+ # to some nonsence/non-working place like under /usr/local/etc/
+ #
+ # NOTE: this changes expected configure behavior: if you specify --prefix
+@@ -95,17 +95,6 @@ AC_ARG_ENABLE([bashcomp],
+               [enable_bashcomp="-bashcomp"])
+ AM_CONDITIONAL(ENABLE_BASHCOMP, test "x$enable_bashcomp" = "x+bashcomp")
+ 
+-AC_ARG_ENABLE([cron],
+-              [AC_HELP_STRING([--disable-cron],
+-                              [Disable cron support])],
+-              [case "${enableval}" in
+-                yes) enable_cron="+cron";;
+-                no)  enable_cron="-cron";;
+-                *)   AC_MSG_ERROR(bad value ${enableval} for --enable-cron);;
+-              esac],
+-              [enable_cron="+cron"])
+-AM_CONDITIONAL(ENABLE_CRON, test "x$enable_cron" = "x+cron")
+-
+ AC_ARG_ENABLE([logrotate],
+               [AC_HELP_STRING([--enable-logrotate],
+                               [Enable logrotate support])],
+@@ -139,14 +128,13 @@ AC_CONFIG_COMMANDS_PRE([SUMMARY="$PACKAGE_STRING configured successfully:
+      target: $target
+      prefix: $prefix
+  sysconfdir: $sysconfdir
+-   features: $enable_bashcomp $enable_cron $enable_logrotate $enable_udev
++   features: $enable_bashcomp $enable_logrotate $enable_udev
+ "])
+ 
+ # Output
+ AC_CONFIG_FILES([bin/Makefile
+                  etc/bash_completion.d/Makefile
+                  etc/conf/Makefile
+-                 etc/cron.d/Makefile
+                  etc/dists/Makefile
+                  etc/init.d/Makefile
+                  etc/logrotate.d/Makefile
+diff --git a/etc/Makefile.am b/etc/Makefile.am
+index b371a65..6ddf9fc 100644
+--- a/etc/Makefile.am
++++ b/etc/Makefile.am
+@@ -20,7 +20,6 @@ include $(top_srcdir)/paths.am
+ SUBDIRS = \
+ 	bash_completion.d \
+ 	conf \
+-	cron.d \
+ 	dists \
+ 	init.d \
+ 	logrotate.d \
+diff --git a/etc/cron.d/.gitignore b/etc/cron.d/.gitignore
+deleted file mode 100644
+index 0f4da40..0000000
+--- a/etc/cron.d/.gitignore
++++ /dev/null
+@@ -1,3 +0,0 @@
+-vz
+-Makefile.in
+-Makefile
+diff --git a/etc/cron.d/Makefile.am b/etc/cron.d/Makefile.am
+deleted file mode 100644
+index f00399f..0000000
+--- a/etc/cron.d/Makefile.am
++++ /dev/null
+@@ -1,26 +0,0 @@
+-#  Copyright (C) 2000-2008, Parallels, Inc. All rights reserved.
+-#
+-#  This program is free software; you can redistribute it and/or modify
+-#  it under the terms of the GNU General Public License as published by
+-#  the Free Software Foundation; either version 2 of the License, or
+-#  (at your option) any later version.
+-#
+-#  This program is distributed in the hope that it will be useful,
+-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-#  GNU General Public License for more details.
+-#
+-#  You should have received a copy of the GNU General Public License
+-#  along with this program; if not, write to the Free Software
+-#  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+-#
+-
+-include $(top_srcdir)/pathsubst.am
+-
+-CRONSCRIPTS = vz
+-EXTRA_DIST = $(CRONSCRIPTS:%=%.in)
+-
+-if ENABLE_CRON
+-crond_SCRIPTS = $(CRONSCRIPTS)
+-CLEANFILES = $(crond_SCRIPTS)
+-endif
+diff --git a/etc/cron.d/vz.in b/etc/cron.d/vz.in
+deleted file mode 100644
+index 5ec98fc..0000000
+--- a/etc/cron.d/vz.in
++++ /dev/null
+@@ -1,32 +0,0 @@
+-# Cron jobs needed for OpenVZ
+-
+-# -- WARNING -- WARNING -- WARNING -- WARNING -- WARNING -- WARNING --
+-# ------------------  EDIT THE CORRECT FILE  -------------------------
+-# This file is copied to @DST_CRONDDIR@/vz from
+-# @CRONDDIR@/vz when the vz service is started
+-# via its init.d script and the file
+-# @DST_CRONDDIR@/vz is cleared when the
+-# service is stopped. Therefore any edits made directly to
+-# @DST_CRONDDIR@/vz will be lost anytime the vz service
+-# restarts.
+-#
+-# To make changes, edit the master copy @CRONDDIR@/vz
+-# (or add your own @CRONDDIR@/vz* files)
+-# and run /etc/init.d/vz update-cron.
+-#
+-# The reason this is done this way is because the OpenVZ cron job
+-# should only be invoked if the vz service is enabled and not
+-# just as a consequence of installing the vzctl as it was the case
+-# previously. The file @DST_CRONDDIR@/vz
+-# cannot simply be linked to the master copy in
+-# @CRONDDIR@/ because for security reasons cron
+-# will not process crontab files that are links or writeable by
+-# anybody else but root, thus the file must be copied
+-# into @DST_CRONDDIR@/ with the right ownership and permissions.
+-
+-
+-# Clean containers' network rules (arp,route,iptables)
+-*/5 * * * * root @PKGDATADIR@/scripts/vpsnetclean
+-
+-# Start containers marked as rebooted.
+-*/5 * * * * root @PKGDATADIR@/scripts/vpsreboot
+diff --git a/etc/init.d/vz-gentoo.in b/etc/init.d/vz-gentoo.in
+index 7ee5b3f..364f4c3 100755
+--- a/etc/init.d/vz-gentoo.in
++++ b/etc/init.d/vz-gentoo.in
+@@ -18,8 +18,6 @@ check_config() {
+ 	: ${VESTAT:=/proc/vz/vestat}
+ 	: ${VPSCONFDIR:=@VPSCONFDIR@}
+ 	: ${VZDEV:=venet0}
+-	: ${SRC_CRONSCRIPT_DIR:=@CRONDDIR@}
+-	: ${DST_CRONSCRIPT_DIR:=@DST_CRONDDIR@}
+ 
+ 	if [ "${MODULES_DISABLED}" != "yes" ]; then
+ 		: ${PRELOAD_MODULES:="af_packet"}
+@@ -44,55 +42,6 @@ check_config() {
+ 	return 0
+ }
+ 
+-# We used to install OpenVZ cron job when the vzctl package was
+-# installed, irrespective of whether OpenVZ was actually being
+-# run. Although the cron jobs didn't create any problems if someone
+-# wasn't running OpenVZ some users complained about the cron log file
+-# filling up, resource usage, and power consumption since systems
+-# wouldn't really idle. It really only makes sense to run the OpenVZ
+-# cron job if the vz service is turned on and not just merely
+-# having the package installed. This init.d script is an obvious place
+-# to install or remove the cron jobs based on the service
+-# being enabled or not.
+-setup_cron()
+-{
+-	[ -z "$SRC_CRONSCRIPT_DIR" ] && return
+-	[ -d "$SRC_CRONSCRIPT_DIR" ] || return
+-	if [ ! -d "${DST_CRONSCRIPT_DIR}" ]; then
+-		if [ "x${SKIP_CRON_WARNINGS}" != "xyes" ]; then
+-			ewarn "Automatic setup of cron jobs works only if a system cron daemon can use"
+-			ewarn "\${DST_CRONSCRIPT_DIR} (${DST_CRONSCRIPT_DIR}) as a spool directory"
+-			ewarn "(e.g. sys-process/vixie-cron can). On your system ${DST_CRONSCRIPT_DIR}"
+-			ewarn "is not a directory even, thus you need manually set the following cron jobs:"
+-			echo
+-			grep -E -v '(^#|^$)' ${SRC_CRONSCRIPT_DIR}/vz*
+-			echo
+-			ewarn "Alternatevely, please, set cron execution of scripts inside ${SRC_CRONSCRIPT_DIR}"
+-			ewarn "so that modifications in those scripts be handled automatically."
+-			ewarn
+-			ewarn "If you already did that and wish to avoid this warning message put"
+-			ewarn "SKIP_CRON_WARNINGS=yes into /etc/conf.d/vz."
+-		fi
+-		return
+-	fi
+-	cat $SRC_CRONSCRIPT_DIR/vz* > $DST_CRONSCRIPT_DIR/vz &&
+-		chmod 644 $DST_CRONSCRIPT_DIR/vz
+-}
+-
+-remove_cron()
+-{
+-	[ -z "$SRC_CRONSCRIPT_DIR" ] && return
+-	[ -d "$SRC_CRONSCRIPT_DIR" ] || return
+-	[ -d "$DST_CRONSCRIPT_DIR" ] || return
+-	cat > $DST_CRONSCRIPT_DIR/vz <<EOF
+-# DO NOT EDIT THIS FILE!
+-#
+-# Contents of this file managed by /etc/init.d/vz script
+-# Master copy is in $SRC_CRONSCRIPT_DIR/vz* file(s).
+-# Consult $SRC_CRONSCRIPT_DIR/vz* for documentation.
+-EOF
+-}
+-
+ setup_ve0() {
+ 	local msg ve0conf="${VPSCONFDIR}/0.conf"
+ 
+@@ -301,7 +250,6 @@ start() {
+ 
+ 	start_net
+ 	setup_ve0
+-	setup_cron
+ 	start_ve
+ }
+ 
+@@ -311,7 +259,6 @@ stop() {
+ 	local mod
+ 
+ 	stop_ve
+-	remove_cron
+ 	stop_net
+ 
+ 	for mod in ${MIGRATE_MODULES}; do
+diff --git a/etc/init.d/vz-redhat.in b/etc/init.d/vz-redhat.in
+index 77448ef..5536031 100755
+--- a/etc/init.d/vz-redhat.in
++++ b/etc/init.d/vz-redhat.in
+@@ -78,84 +78,6 @@ RETVAL=0
+ PARALLEL=
+ cd /
+ 
+-# We used to install OpenVZ cron job when the vzctl package was
+-# installed, irrespective of whether OpenVZ was actually being
+-# run. Although the cron jobs didn't create any problems if someone
+-# wasn't running OpenVZ some users complained about the cron log file
+-# filling up, resource usage, and power consumption since systems
+-# wouldn't really idle. It really only makes sense to run the OpenVZ
+-# cron job if the vz service is turned on and not just merely
+-# having the package installed. This init.d script is an obvious place
+-# to install or remove the cron jobs based on the service
+-# being enabled or not.
+-SRC_CRONSCRIPT_DIR=@CRONDDIR@
+-DST_CRONSCRIPT_DIR=@DST_CRONDDIR@
+-
+-check_old_cron_files()
+-{
+-	# avoid double OpenVZ cron settings
+-	local f
+-	for f in vpsreboot vpsnetclean; do
+-		[ -f $DST_CRONSCRIPT_DIR/$f ] && rm -f $DST_CRONSCRIPT_DIR/$f
+-	done
+-}
+-
+-if ! type is_ignored_file >/dev/null 2>&1; then
+-	is_ignored_file() {
+-		case "$1" in
+-		    *~ | *.bak | *.orig | *.rpmnew | *.rpmorig | *.rpmsave)
+-			return 0
+-			;;
+-		esac
+-		return 1
+-	}
+-fi
+-
+-setup_cron()
+-{
+-	local f ch
+-
+-	check_old_cron_files
+-	[ -z "$SRC_CRONSCRIPT_DIR" ] && return
+-	[ -d "$SRC_CRONSCRIPT_DIR" ] || return
+-	[ -d "$DST_CRONSCRIPT_DIR" ] || return
+-	for f in $SRC_CRONSCRIPT_DIR/vz*; do
+-		if ! is_ignored_file $f; then
+-			cat $f > $DST_CRONSCRIPT_DIR/vz && ch=yes
+-		fi
+-	done
+-	[ $ch = 'yes' ] && chmod 644 $DST_CRONSCRIPT_DIR/vz
+-}
+-
+-remove_cron()
+-{
+-	check_old_cron_files
+-	[ -z "$SRC_CRONSCRIPT_DIR" ] && return
+-	[ -d "$SRC_CRONSCRIPT_DIR" ] || return
+-	[ -d "$DST_CRONSCRIPT_DIR" ] || return
+-	cat > $DST_CRONSCRIPT_DIR/vz <<EOF
+-# DO NOT EDIT THIS FILE!
+-#
+-# Contents of this file managed by /etc/init.d/vz script
+-# Master copy is in $SRC_CRONSCRIPT_DIR/vz* file(s).
+-# Consult $SRC_CRONSCRIPT_DIR/vz* for documentation.
+-EOF
+-}
+-
+-# Actualize OpenVZ cron entry:
+-# if OpenVZ is running, add it, otherwise remove.
+-update_cron()
+-{
+-	if is_running; then
+-		__echo "Adding OpenVZ cron entries"
+-		setup_cron
+-	else
+-		__echo "Removing OpenVZ cron entries"
+-		remove_cron
+-	fi
+-	print_result
+-}
+-
+ check_kernel()
+ {
+ 	if ! test -d /proc/vz ; then
+@@ -492,7 +414,6 @@ start()
+ 
+ 	start_net
+ 	setup_ve0
+-	setup_cron
+ 	start_ves
+ 
+ 	rm -f $LOCKFILE
+@@ -511,7 +432,6 @@ stop()
+ 	fi
+ 
+ 	stop_ves
+-	remove_cron
+ 	stop_net
+ 	__echo "Stopping OpenVZ: "
+ 	for mod in ${MODULES_OTHER} ${MODULES} ${PRELOAD_MODULES} ${IPT_MODULES} ${VZFS_MODULES}; do
+@@ -551,12 +471,8 @@ case "$1" in
+ 	status
+ 	RETVAL=$?
+ 	;;
+-  update-cron)
+-	update_cron
+-	RETVAL=0
+-	;;
+   *)
+-	echo "Usage: $0 {start|stop|status|restart|force-reload|update-cron}"
++	echo "Usage: $0 {start|stop|status|restart|force-reload}"
+ 	exit 1
+ esac
+ 
+diff --git a/paths.am b/paths.am
+index a6e2d89..f79301f 100644
+--- a/paths.am
++++ b/paths.am
+@@ -19,11 +19,6 @@ if ENABLE_BASHCOMP
+ bashcdir    = $(sysconfdir)/bash_completion.d
+ endif
+ 
+-if ENABLE_CRON
+-cronddir    = $(pkgconfdir)/cron
+-dst_cronddir= $(sysconfdir)/cron.d
+-endif
+-
+ if ENABLE_LOGROTATE
+ logrdir     = $(sysconfdir)/logrotate.d
+ endif
+@@ -42,4 +37,3 @@ distconfdir = $(pkgconfdir)/dists
+ namesdir    = $(pkgconfdir)/names
+ 
+ vzlibdir    = $(pkglibdir)/scripts
+-vzcrondir   = $(pkgdatadir)/scripts
+diff --git a/pathsubst.am b/pathsubst.am
+index 2a0dbf1..f47334e 100644
+--- a/pathsubst.am
++++ b/pathsubst.am
+@@ -22,10 +22,7 @@ pathsubst_RULES = \
+ 	s!@'PKGCONFDIR'@!$(pkgconfdir)!g; \
+ 	s!@'VPSCONFDIR'@!$(vpsconfdir)!g; \
+ 	s!@'PKGDATADIR'@!$(pkgdatadir)!g; \
+-	s!@'PKGLIBDIR'@!$(pkglibdir)!g; \
+-	s!@'CRONDDIR'@!$(cronddir)!g; \
+-	s!@'DST_CRONDDIR'@!$(dst_cronddir)!g;
+-
++	s!@'PKGLIBDIR'@!$(pkglibdir)!g;
+ 
+ pathsubst = sed -e '$(pathsubst_RULES)'
+ 
+diff --git a/scripts/Makefile.am b/scripts/Makefile.am
+index 1b742cd..e7fc65f 100644
+--- a/scripts/Makefile.am
++++ b/scripts/Makefile.am
+@@ -25,14 +25,8 @@ vzlib_SCRIPTS = \
+ 	vzevent-stop \
+ 	vzevent-reboot
+ 
+-vzcron_SCRIPTS = \
+-	vpsnetclean \
+-	vpsreboot
+-
+ EXTRA_DIST = \
+-	$(vzlib_SCRIPTS:%=%.in) \
+-	$(vzcron_SCRIPTS:%=%.in)
++	$(vzlib_SCRIPTS:%=%.in)
+ 
+ CLEANFILES = \
+-	$(vzlib_SCRIPTS) \
+-	$(vzcron_SCRIPTS)
++	$(vzlib_SCRIPTS)
+diff --git a/scripts/vpsnetclean.in b/scripts/vpsnetclean.in
+deleted file mode 100755
+index 1fe8f18..0000000
+--- a/scripts/vpsnetclean.in
++++ /dev/null
+@@ -1,105 +0,0 @@
+-#!/bin/sh
+-#  Copyright (C) 2000-2008, Parallels, Inc. All rights reserved.
+-#
+-#  This program is free software; you can redistribute it and/or modify
+-#  it under the terms of the GNU General Public License as published by
+-#  the Free Software Foundation; either version 2 of the License, or
+-#  (at your option) any later version.
+-#
+-#  This program is distributed in the hope that it will be useful,
+-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-#  GNU General Public License for more details.
+-#
+-#  You should have received a copy of the GNU General Public License
+-#  along with this program; if not, write to the Free Software
+-#  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+-#
+-#
+-
+-VZCONF=@PKGCONFDIR@/vz.conf
+-VEINFO=/proc/vz/veinfo
+-VES_INFO=
+-VE_RUN=
+-VE_PREV=
+-
+-test -f "$VZCONF" || exit 1
+-test -f @PKGLIBDIR@/scripts/vps-functions || exit 1
+-
+-. @PKGLIBDIR@/scripts/vps-functions
+-. "$VZCONF"
+-
+-#
+-# Get the list of currently running containers
+-#
+-get_run_ve()
+-{
+-	VE_RUN=`echo "$VES_INFO" | awk '$1 != 0 {print $1}'`
+-}
+-
+-#
+-# Get the list of started containers by vzctl
+-#
+-get_prev_ve()
+-{
+-	[ -d "$VE_STATE_DIR" ] || return
+-	VE_PREV=`ls "$VE_STATE_DIR" | grep -w -e "[0-9]*" 2>/dev/null`
+-}
+-
+-
+-#
+-# Get the list of stopped containers
+-#
+-get_stopped_ve()
+-{
+-	get_run_ve
+-	get_prev_ve
+-
+-	if [ -z "$VE_RUN" ]; then
+-		VE_STOPPED="$VE_PREV"
+-	else
+-		VE_STOPPED=`echo "$VE_PREV" | grep -w -v "$VE_RUN"`
+-	fi
+-}
+-
+-get_ip_list()
+-{
+-	local veid=$1
+-
+-	IP_ADDR=
+-	[ -n "$veid" ] || return
+-	[ -f "$VE_STATE_DIR/$veid" ] || return
+-	IP_ADDR=`cat "$VE_STATE_DIR/$veid"`
+-}
+-
+-clear_ve_net()
+-{
+-	local ip
+-	VEID="$1"
+-
+-	[ -n "$VEID" ] || return
+-	get_ip_list "$VEID"
+-	vzgetnetdev
+-	[ -z "$LOGFILE" ] ||
+-		echo "`date --iso-8601=seconds` venetclean : CT $VEID : CT died, clear IPs: $IP_ADDR" >> "$LOGFILE"
+-	for ip in $IP_ADDR; do
+-		# clear IP if not used
+-		if ! echo "$VES_INFO" | grep -w "$ip" >/dev/null 2>&1; then
+-			vzdelrouting "$ip"
+-			vzarp del "$ip"
+-		fi
+-	done
+-}
+-
+-# If VZ is not running -- do nothing
+-# Fix for OpenVZ bug #107
+-test -f "$VEINFO" || exit 0
+-
+-VES_INFO=`cat "$VEINFO" 2>/dev/null` || exit
+-get_stopped_ve
+-for ve in $VE_STOPPED; do
+-	clear_ve_net "$ve"
+-	rm -f "$VE_STATE_DIR/$ve" >/dev/null 2>&1
+-done
+-
+-exit 0
+diff --git a/scripts/vpsreboot.in b/scripts/vpsreboot.in
+deleted file mode 100755
+index 58de828..0000000
+--- a/scripts/vpsreboot.in
++++ /dev/null
+@@ -1,87 +0,0 @@
+-#!/bin/sh
+-#  Copyright (C) 2000-2010, Parallels, Inc. All rights reserved.
+-#
+-#  This program is free software; you can redistribute it and/or modify
+-#  it under the terms of the GNU General Public License as published by
+-#  the Free Software Foundation; either version 2 of the License, or
+-#  (at your option) any later version.
+-#
+-#  This program is distributed in the hope that it will be useful,
+-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-#  GNU General Public License for more details.
+-#
+-#  You should have received a copy of the GNU General Public License
+-#  along with this program; if not, write to the Free Software
+-#  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+-#
+-#
+-# (Re)start those containers which were rebooted from the inside.
+-
+-VZCONF=@PKGCONFDIR@/vz.conf
+-CONF_DIR=@PKGCONFDIR@/conf
+-VESTAT=/proc/vz/vestat
+-REBOOT_MARK='reboot'
+-LOCKFILE='/var/lock/vereboot.lock'
+-
+-[ -f "$VZCONF" ] || exit
+-. "$VZCONF"
+-
+-check_reboot()
+-{
+-	local veid="$1"
+-	local ve_root
+-	local allowreboot
+-
+-	VEID="$veid"
+-	[ -f "$CONF_DIR/$veid.conf" ] || return
+-	eval ` (
+-		. "$VZCONF"
+-		. "$CONF_DIR/$veid.conf"
+-		echo "ve_root=${VE_ROOT};"
+-		echo "allowreboot=${ALLOWREBOOT}\;"
+-	) `
+-	[ "$allowreboot" = 'no' ] && return
+-	if [ -f "$ve_root/$REBOOT_MARK" ]; then
+-		[ -z "$LOGFILE" ] ||
+-			echo "`date --iso-8601=seconds` vereboot : CT $veid : reboot " >> "$LOGFILE"
+-		@SBINDIR@/vzctl start "$veid" >/dev/null 2>&1
+-	fi
+-}
+-
+-lockfile()
+-{
+-	local tmpfile="$LOCKFILE.$$"
+-
+-	echo $$ >"$tmpfile" 2>/dev/null || exit
+-	if ln "$tmpfile" "$LOCKFILE" 2>/dev/null; then
+-		rm -f "$tmpfile"
+-		return
+-	fi
+-	if kill -0 `cat $LOCKFILE 2>/dev/null` 2>/dev/null; then
+-		# Process is still running
+-		rm -f "$tmpfile"
+-		exit
+-	else
+-		# Not running -- retry
+-		rm -f $LOCKFILE
+-	fi
+-	if ln "$tmpfile" "$LOCKFILE" 2>/dev/null; then
+-		rm -f "$tmpfile"
+-		return
+-	fi
+-	rm -f "$tmpfile" "$LOCKFILE"
+-	exit
+-}
+-
+-# If VZ is not running -- do nothing
+-# Fix for OpenVZ bug #107
+-test -f "$VESTAT" || exit 0
+-lockfile
+-VE_STOPPED=$(@SBINDIR@/vzlist -H -octid -S 2>/dev/null)
+-for i in $VE_STOPPED; do
+-	check_reboot "$i"
+-done
+-
+-rm -f "$LOCKFILE"
+-exit 0
+diff --git a/src/lib/env.c b/src/lib/env.c
+index 5281427..0a61bbb 100644
+--- a/src/lib/env.c
++++ b/src/lib/env.c
+@@ -351,8 +351,6 @@ try:
+ 	fd = open("/fastboot", O_CREAT | O_RDONLY, 0644);
+ 	close(fd);
+ 
+-	mk_reboot_script();
+-
+ 	if (res->misc.wait == YES) {
+ 		if (add_reach_runlevel_mark()) {
+ 			ret = VZ_WAIT_FAILED;
+diff --git a/src/lib/script.c b/src/lib/script.c
+index cb95b1b..761595b 100644
+--- a/src/lib/script.c
++++ b/src/lib/script.c
+@@ -215,37 +215,6 @@ int run_pre_script(int veid, char *script)
+ 	return ret;
+ }
+ 
+-int mk_reboot_script()
+-{
+-	char buf[STR_SIZE];
+-	char *rc;
+-	int fd;
+-#define REBOOT_MARK	"/reboot"
+-#define VZREBOOT	"S00vzreboot"
+-#define RC1		"/etc/rc.d/rc6.d"
+-#define RC2		"/etc/rc6.d"
+-#define REBOOT_SCRIPT	"#!/bin/bash\n>" REBOOT_MARK
+-
+-	/* remove reboot flag */
+-	unlink(REBOOT_MARK);
+-	rc = NULL;
+-	if (stat_file(RC1))
+-		rc = RC1;
+-	if (stat_file(RC2))
+-		rc = RC2;
+-	if (rc == NULL)
+-		return 1;
+-	sprintf(buf, "%s/" VZREBOOT, rc);
+-	if ((fd = open(buf, O_CREAT|O_WRONLY|O_TRUNC, 0755)) < 0) {
+-		logger(-1, errno, "Unable to create %s", buf);
+-		return 1;
+-	}
+-	write(fd, REBOOT_SCRIPT, sizeof(REBOOT_SCRIPT) - 1);
+-	close(fd);
+-
+-	return 0;
+-}
+-
+ #define PROC_QUOTA	"/proc/vz/vzaquota/"
+ #define QUOTA_U		"/aquota.user"
+ #define QUOTA_G		"/aquota.group"
+diff --git a/vzctl.spec b/vzctl.spec
+index f7c3c59..deeef6e 100644
+--- a/vzctl.spec
++++ b/vzctl.spec
+@@ -12,7 +12,6 @@
+ %define _vpsconfdir %_sysconfdir/sysconfig/vz-scripts
+ %define _netdir	%_sysconfdir/sysconfig/network-scripts
+ %define _logrdir %_sysconfdir/logrotate.d
+-%define _crondir %{_configdir}/cron
+ %define _distconfdir %{_configdir}/dists
+ %define _namesdir %{_configdir}/names
+ %define _distscriptdir %{_distconfdir}/scripts
+@@ -71,9 +70,6 @@ ln -s ../sysconfig/vz-scripts $RPM_BUILD_ROOT/%{_configdir}/conf
+ ln -s ../vz/vz.conf $RPM_BUILD_ROOT/etc/sysconfig/vz
+ # This could go to vzctl-lib-devel, but since we don't have it...
+ rm -f  $RPM_BUILD_ROOT/%_libdir/libvzctl.{la,so}
+-# Needed for ghost in files section below
+-mkdir $RPM_BUILD_ROOT/etc/cron.d/
+-touch $RPM_BUILD_ROOT/etc/cron.d/vz
+ 
+ %clean
+ rm -rf $RPM_BUILD_ROOT
+@@ -82,7 +78,6 @@ rm -rf $RPM_BUILD_ROOT
+ %defattr(-,root,root)
+ %attr(755,root,root) %{_initddir}/vz
+ %attr(755,root,root) %{_initddir}/vzeventd
+-%ghost /etc/cron.d/vz
+ %dir %attr(755,root,root) %{_lockdir}
+ %dir %attr(755,root,root) %{_dumpdir}
+ %dir %attr(700,root,root) %{_privdir}
+@@ -90,7 +85,6 @@ rm -rf $RPM_BUILD_ROOT
+ %dir %attr(755,root,root) %{_cachedir}
+ %dir %attr(755,root,root) %{_veipdir}
+ %dir %attr(755,root,root) %{_configdir}
+-%dir %attr(755,root,root) %{_crondir}
+ %dir %attr(755,root,root) %{_namesdir}
+ %dir %attr(755,root,root) %{_vpsconfdir}
+ %dir %attr(755,root,root) %{_distconfdir}
+@@ -140,7 +134,6 @@ rm -rf $RPM_BUILD_ROOT
+ 
+ %config(noreplace) %{_configdir}/vz.conf
+ %config(noreplace) %{_distconfdir}/*.conf
+-%attr(644,root,root) %config(noreplace) %{_crondir}/vz
+ %config %{_vpsconfdir}/ve-basic.conf-sample
+ %config %{_vpsconfdir}/ve-light.conf-sample
+ %config %{_vpsconfdir}/ve-unlimited.conf-sample

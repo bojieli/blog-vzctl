@@ -1,0 +1,34 @@
+From: Kir Kolyshkin <kir@openvz.org>
+Date: Fri, 10 Sep 2010 09:33:25 +0000 (+0400)
+Subject: init.d/vzevent: support Debian-specific file to set vzeventd options
+X-Git-Url: http://git.openvz.org/?p=vzctl;a=commitdiff_plain;h=714f8ccaa52cfd462baf602bf5b21c256597640d
+
+init.d/vzevent: support Debian-specific file to set vzeventd options
+
+For Red Hat like distros and SUSE, options for various daemons and such
+are usually set in files residing in /etc/sysconfig, in our case
+this is /etc/sysconfig/vzeventd.
+
+Debian uses /etc/default for such stuff, so check if /etc/default/vzeventd
+exists and is readable and source it.
+
+For example, if you want vzeventd to be more verbose, do
+  echo 'OPTIONS=-v' > /etc/default/vzeventd	# Debian
+  echo 'OPTIONS=-v' > /etc/sysconfig/zeventd	# Red Hat, Fedora, SUSE
+and then /etc/init.d/vzeventd restart
+
+Signed-off-by: Kir Kolyshkin <kir@openvz.org>
+---
+
+diff --git a/etc/init.d/vzeventd-redhat.in b/etc/init.d/vzeventd-redhat.in
+index 28ce410..c9bf71b 100755
+--- a/etc/init.d/vzeventd-redhat.in
++++ b/etc/init.d/vzeventd-redhat.in
+@@ -55,6 +55,7 @@ start() {
+ 	[ "$EUID" != "0" ] && exit 4
+ 	[ -x @SBINDIR@/vzeventd ] || exit 5
+ 	[ -r /etc/sysconfig/vzeventd ] && . /etc/sysconfig/vzeventd
++	[ -r /etc/default/vzeventd ] && . /etc/default/vzeventd
+ 
+ 	load_module
+ 	check || exit 1

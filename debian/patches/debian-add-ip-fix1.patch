@@ -1,0 +1,27 @@
+--- etc/dists/scripts/debian-add_ip.sh~	2010-09-09 06:53:09.748321246 +0200
++++ etc/dists/scripts/debian-add_ip.sh	2010-10-27 08:16:20.889168895 +0200
+@@ -99,6 +99,7 @@
+ 	fix_networking_conf
+ }
+ 
++create_config_has_gateway= # only add a single gateway line
+ function create_config()
+ {
+ 	local ip=$1
+@@ -109,10 +110,12 @@
+ iface ${VENET_DEV}:${ifnum} inet static
+ 	address ${ip}
+ 	netmask 255.255.255.255
+-	broadcast 0.0.0.0
+-	gateway ${FAKEGATEWAY}
+-" >> ${CFGFILE}.bak
+-
++	broadcast 0.0.0.0" >> ${CFGFILE}.bak
++	    if [ -z $create_config_has_gateway ]; then
++		echo "	gateway ${FAKEGATEWAY}" >> ${CFGFILE}.bak
++		reate_config_has_gateway=1
++	    fi
++	    echo >> ${CFGFILE}.bak
+ 	else
+ 	    sed -i -e "s/netmask\ 128/netmask\ 128\n\tup ifconfig venet0 add ${ip}\/128; if \[ -x \/bin\/ip \]; then ip -6 route add default dev ${VENET_DEV}; exit 0; fi/" ${CFGFILE}.bak
+ 	fi

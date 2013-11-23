@@ -1,0 +1,37 @@
+From: Kir Kolyshkin <kir@openvz.org>
+Date: Wed, 21 Jul 2010 14:59:59 +0000 (+0400)
+Subject: vzmigrate: ignore error 24 from the first rsync run
+X-Git-Tag: vzctl-3.0.24.1~2
+X-Git-Url: http://git.openvz.org/?p=vzctl;a=commitdiff_plain;h=540ac78700dba92ac145d7f69d67d344c880ba04;hp=2bcfc6dbdb9178a2623cf28dee1d8e351d888daa
+
+vzmigrate: ignore error 24 from the first rsync run
+
+Now, when we really started to check the exit code from rsync, we got
+the following problem. Apparently, sometimes first rsync run fails
+with error 24, it happens when a file to be transferred is removed.
+Since the container is running at this time there is nothing wrong
+with it, so ignore error 24.
+
+Should fix bug #1580.
+
+http://bugzilla.openvz.org/1580
+
+Reported-by: Roman Veretelnikov <roman@rover.pp.ru>
+Signed-off-by: Kir Kolyshkin <kir@openvz.org>
+---
+
+diff --git a/bin/vzmigrate.in b/bin/vzmigrate.in
+index 479ba37..a138704 100755
+--- a/bin/vzmigrate.in
++++ b/bin/vzmigrate.in
+@@ -454,7 +454,9 @@ else
+ fi
+ 
+ log 1 "Syncing private"
+-if ! $RSYNC "$VE_PRIVATE" "root@$host:${VE_PRIVATE%/*}"; then
++$RSYNC "$VE_PRIVATE" "root@$host:${VE_PRIVATE%/*}"
++# Ignore rsync error 24 "Partial transfer due to vanished source files"
++if [ $? != 24 ] && [ $? != 0 ]; then
+ 	log 0 "Failed to sync container private areas"
+ 	undo_quota_on
+ 	exit $MIG_ERR_COPY

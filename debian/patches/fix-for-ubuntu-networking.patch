@@ -1,0 +1,57 @@
+From: Kir Kolyshkin <kir@openvz.org>
+Date: Mon, 6 Sep 2010 12:42:45 +0000 (+0400)
+Subject: debian-add_ip.sh: fixlet for Ubuntu networking
+X-Git-Tag: vzctl-3.0.24.2~3
+X-Git-Url: http://git.openvz.org/?p=vzctl;a=commitdiff_plain;h=d9757f798e055d31d1e5d985f428ddd7f2cb3a99;hp=acd709407ade5aca961a37d29862c42cf1bd9b6a
+
+debian-add_ip.sh: fixlet for Ubuntu networking
+
+In Ubuntu's /etc/init/networking.conf there are the following lines:
+
+	start on (local-filesystems
+        	  and stopped udevtrigger)
+
+Our templates change it to:
+
+	start on local-filesystems
+
+The problem is after apt-get upgrade this file is recreated and these
+modifications are lost. We have to take care of fixing it on every IP
+adding operation.
+
+Signed-off-by: Kir Kolyshkin <kir@openvz.org>
+(cherry picked from commit 0ea082ad2e72b6bad15c0e64d8bf2b4e1ee7f11a)
+---
+
+diff --git a/etc/dists/scripts/debian-add_ip.sh b/etc/dists/scripts/debian-add_ip.sh
+index 904e67f..0d29554 100755
+--- a/etc/dists/scripts/debian-add_ip.sh
++++ b/etc/dists/scripts/debian-add_ip.sh
+@@ -23,6 +23,19 @@ LOOPBACK=lo
+ CFGFILE=/etc/network/interfaces
+ HOSTFILE=/etc/hosts
+ 
++function fix_networking_conf()
++{
++	local cfg="/etc/init/networking.conf"
++	local str="local-filesystems"
++
++	test -f ${cfg} || return 0
++	fgrep -q "udevtrigger" ${cfg} 2>/dev/null || return 0
++
++	fgrep -v "udevtrigger" ${cfg} | \
++		sed "s,(${str},${str},g" > ${cfg}.$$ && \
++		mv -f ${cfg}.$$ ${cfg}
++}
++
+ function setup_network()
+ {
+ 	echo "# This configuration file is auto-generated.
+@@ -84,6 +97,7 @@ iface venet0 inet6 static
+ 		cat ${CFGFILE}.tail >> ${CFGFILE}
+ 	fi
+ 
++	fix_networking_conf
+ }
+ 
+ function create_config()

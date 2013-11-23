@@ -1,0 +1,73 @@
+From: Kir Kolyshkin <kir@openvz.org>
+Date: Tue, 6 Jul 2010 11:45:56 +0000 (+0400)
+Subject: Revert "Check for memory granted by get_dist_name"
+X-Git-Tag: vzctl-3.0.24.1~5
+X-Git-Url: http://git.openvz.org/?p=vzctl;a=commitdiff_plain;h=b8f60495c1a77cc48f1242ca1e515989bdf46636;hp=ef4d336f93b96313698e44c94b29b95543e62bdc
+
+Revert "Check for memory granted by get_dist_name"
+
+This reverts commit 80ad89e384e04bd0835a13f246840f4f71113263.
+
+The commit have a few problems, unfortunately I overlooked it.
+
+1. return NULL from get_dist_name() is perfectly valid,
+   it means that both tmpl->dist nor tmpl->ostmpl are NULL.
+   This NULL is later handled by read_dist_actions().
+   With this patch return NULL from get_dist_name() becomes
+   an error, but there is no error!
+
+2. return code VZ_SET_NAME_ERROR is just wrong.
+
+3. In vps_start_custom() we silently fail if OSTEMPLATE
+   is not specified in CT config. This leads to vzctl start
+   to silently fail to start a CT and exit with the wrong
+   exit code (see 2).
+(cherry picked from commit 9588ecbb8c8e3b628a1187e88d664662b83c97d5)
+---
+
+diff --git a/src/lib/create.c b/src/lib/create.c
+index b5c8f96..647cd44 100644
+--- a/src/lib/create.c
++++ b/src/lib/create.c
+@@ -327,8 +327,6 @@ int vps_postcreate(envid_t veid, fs_param *fs, tmpl_param *tmpl)
+ 	if (check_var(fs->root, "VE_ROOT is not set"))
+ 		return VZ_VE_ROOT_NOTSET;
+ 	dist_name = get_dist_name(tmpl);
+-	if (!dist_name)
+-		return VZ_SET_NAME_ERROR;
+ 	ret = read_dist_actions(dist_name, DIST_DIR, &actions);
+ 	free(dist_name);
+ 	if (ret)
+diff --git a/src/lib/env.c b/src/lib/env.c
+index e740858..7b32ad6 100644
+--- a/src/lib/env.c
++++ b/src/lib/env.c
+@@ -552,8 +552,6 @@ int vps_start_custom(vps_handler *h, envid_t veid, vps_param *param,
+ 	if ((ret = check_ub(&res->ub)))
+ 		return ret;
+ 	dist_name = get_dist_name(&res->tmpl);
+-	if (!dist_name)
+-		return VZ_SET_NAME_ERROR;
+ 	ret = read_dist_actions(dist_name, DIST_DIR, &actions);
+ 	free(dist_name);
+ 	if (ret)
+diff --git a/src/vzctl-actions.c b/src/vzctl-actions.c
+index ed6060d..8fb1634 100644
+--- a/src/vzctl-actions.c
++++ b/src/vzctl-actions.c
+@@ -608,14 +608,8 @@ static int set(vps_handler *h, envid_t veid, vps_param *g_p, vps_param *vps_p,
+ 		need_configure(&cmd_p->del_res) ||
+ 		!list_empty(&cmd_p->res.misc.userpw))
+ 	{
+-		actions = vz_malloc(sizeof(*actions));
+-		if (!actions)
+-			return ERR_NOMEM;
++		actions = malloc(sizeof(*actions));
+ 		dist_name = get_dist_name(&g_p->res.tmpl);
+-		if (!dist_name) {
+-			free(actions);
+-			return VZ_SET_NAME_ERROR;
+-		}
+ 		if ((ret = read_dist_actions(dist_name, DIST_DIR, actions)))
+ 			return ret;
+ 		free(dist_name);

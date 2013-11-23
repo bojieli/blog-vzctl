@@ -1,0 +1,34 @@
+--- /root/debian-add_ip.sh.old	2010-03-19 13:39:53.000000000 +0700
++++ /root/debian-add_ip.sh.old	2010-04-29 01:36:33.000000000 +0800
+@@ -43,14 +43,13 @@ 
+ 	address 127.0.0.1
+ 	netmask 255.255.255.255
+ 	broadcast 0.0.0.0
+-	up route add -net ${FAKEGATEWAY} netmask 255.255.255.255 dev ${VENET_DEV}
+-	up route add default gw ${FAKEGATEWAY}" >> ${CFGFILE}
++	up route add -net ${FAKEGATEWAY} netmask 255.255.255.255 dev ${VENET_DEV}" >> ${CFGFILE}
+ 
+ 	if [ "${IPV6}" = "yes" ]; then
+ 		echo -e "
+-iface venet0 inet6 static
+-	address ::1
+-	netmask 128
++#iface venet0 inet6 static
++#	address ::2
++#	netmask 128
+ " >> ${CFGFILE}
+ 
+ 	fi
+@@ -76,10 +75,11 @@ 
+ 	address ${ip}
+ 	netmask 255.255.255.255
+ 	broadcast 0.0.0.0
++	gateway ${FAKEGATEWAY}
+ " >> ${CFGFILE}.bak
+ 
+ 	else
+-	    sed -i -e "s/netmask\ 128/netmask\ 128\n\tup ifconfig venet0 add ${ip}\/0/" ${CFGFILE}.bak
++	    sed -i -e "s/netmask\ 128/netmask\ 128\n\tup ifconfig venet0 add ${ip}\/128; if \[ -x \/bin\/ip \]; then ip -6 route add default dev ${VENET_DEV}; exit 0; fi/" ${CFGFILE}.bak
+ 	fi
+ 
+ }

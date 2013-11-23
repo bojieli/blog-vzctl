@@ -1,0 +1,54 @@
+From: Bernd Rothert <bro@mzv.net>
+Date: Fri, 27 Aug 2010 15:23:50 +0000 (+0400)
+Subject: Restore vzgetnetdev incompatibility with mawk
+X-Git-Tag: vzctl-3.0.24.2~5
+X-Git-Url: http://git.openvz.org/?p=vzctl;a=commitdiff_plain;h=3cc8275c132e3e12072af47997bcfe46a03c1572;hp=e076fd8b2582fb91b2cc206ea87b8a75428a5ca0
+
+Restore vzgetnetdev incompatibility with mawk
+
+After upgrading to vzctl-3.0.24 my VEs on a Debian Lenny HN lost network
+connectivity. The HN didn't reply to ARP requests for its VEs' IPs.
+
+The logs didn't show any errors but "vzctl stop ve" reported:
+
+	vps-net_del WARNING: Device list is empty
+
+Debian - Lenny as well as Sid - installs mawk instead of gawk by default
+(debootstrap etc.). mawk doesn't support word boundary archors recently
+introduced in the interface matching regexes in vps-functions/vzgetnetdev().
+Obviously vps-net_add doesn't find any interfaces.
+
+Incompatible patch is commit 0104badd.
+
+Maybe we could revert to the old regexes from 3.0.23 but these could fail in
+the future, mistaking "SUPER" for "UP" or something as you pointed out.
+
+This patch is a bit ugly (\< \> replaced with [^A-Z_]) but it
+is more robust than 3.0.23 yet compatible.
+
+http://bugzilla.openvz.org/show_bug.cgi?id=1506
+http://bugzilla.openvz.org/show_bug.cgi?id=1588
+http://bugzilla.openvz.org/show_bug.cgi?id=1602
+
+Reported-by: Dietmar Maurer <dietmar@maurer-it.com>
+Reported-by: Bernd Rothert <bro@mzv.net>
+Signed-off-by: Bernd Rothert <bro@mzv.net>
+Signed-off-by: Kir Kolyshkin <kir@openvz.org>
+(cherry picked from commit 7d5ba92543ee16ed0e2ae87bc65696cf054254c3)
+---
+
+diff --git a/scripts/vps-functions.in b/scripts/vps-functions.in
+index 0bcc65b..53b526a 100755
+--- a/scripts/vps-functions.in
++++ b/scripts/vps-functions.in
+@@ -100,8 +100,8 @@ vzgetnetdev()
+ 	/^[0-9]+: / {
+ 		dev="";
+ 	}
+-	/^[0-9]+: / && /\<UP\>/ && !/\<LOOPBACK\>/ \
+-			&& !/\<SLAVE\>/ && !/\<NOARP\>/ {
++	/^[0-9]+: / && /[^A-Z_]UP[^A-Z_]/ && !/[^A-Z_]LOOPBACK[^A-Z_]/ \
++			&& !/[^A-Z_]SLAVE[^A-Z_]/ && !/[^A-Z_]NOARP[^A-Z_]/ {
+ 		if ($2 !~ /^veth[0-9]+/)
+ 			dev=$2;
+ 	}

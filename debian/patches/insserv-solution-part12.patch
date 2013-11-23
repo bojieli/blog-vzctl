@@ -1,0 +1,11 @@
+--- etc/init.d/vzeventd-redhat.in~	2010-09-08 20:43:50.817320088 +0200
++++ etc/init.d/vzeventd-redhat.in	2010-09-08 21:16:36.260336894 +0200
+@@ -22,7 +22,7 @@
+ #              and performs required actions associated with those events.
+ ### END INIT INFO
+ 
+-. @VZLIBDIR@/vzfunctions
++. @VZLIBDIR@/initd-functions
+ 
+ prog=vzeventd
+ lockfile=$VARLOCK/$prog

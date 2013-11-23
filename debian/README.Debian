@@ -1,0 +1,230 @@
+vzctl for Debian
+----------------
+
+This package requires you to have a modified version of the Linux
+kernel. To find a suitable kernel image, look for a package called
+linux-image-*-openvz-<architecture>.
+ 
+You can also download precompiled kernel images from OpenVZ site:
+http://download.openvz.org/kernel/debian
+See http://wiki.openvz.org/Download_mirrors for a list of mirrors.
+
+It is highly recommended to use a Linux kernel that support vzevent. If not
+vzeventd will not be started. The limitation in such case is that reboot
+operation for a vz container will not work.
+
+The openvz patched Linux kernel in Debian squeeze supports vzevent.
+The openvz patched Linux kernel in Debian lenny do not support vzevent.
+
+
+
+Changes compared to standard vzctl installation:
+------------------------------------------------
+
+* Default OS template is "debian" instead of "fedora-core-4".
+* Directory structure as described below.
+
+
+
+Configuration:
+--------------
+
+If you want vzeventd to be more verbose, do
+  echo 'OPTIONS=-v' > /etc/default/vzeventd
+and then /etc/init.d/vzeventd restart
+
+
+
+Architecture support:
+---------------------
+
+vzctl and vzquota are supported on IA-32 (i386), x86-64 (amd64), IA-64 (ia64),
+sparc and powerpc architectures. Note that the live migration function is
+only supported on IA-32 and x86-64 architectures.
+
+
+
+File structure:
+---------------
+
+The functionality that OpenVZ provides requires that a directory structure is
+created. On a Debian installation it is by default located in /var/lib/vz,
+which is different from the upstream /vz directory. You can change
+it back in the /etc/vz/vz.conf configuration file or change to any other
+location if you like. The directories can be (re)created with the following
+commands:
+
+  mkdir -p /vz/lock
+  mkdir -p /vz/dump
+  mkdir -p /vz/template/cache
+
+You can also copy the structure from /var/lib/vz.
+
+OBSERVE! The vzsplit tool only supports the following directories:
+/vz, /var/lib/vz and /srv/vz.
+
+
+
+Create a configuration template:
+--------------------------------
+
+The vzctl package includes two sample configuration files: light and basic.
+The basic template is used in the samples below. Normally you should create
+a new "larger" configuration template using the tool vzsplit.
+
+  vzsplit -n 1 > /etc/vz/conf/ve-big.conf-sample
+
+For further information on how to use vzsplit, see the vzsplit man page.
+
+  man vzsplit
+
+
+
+Create a virtual server:
+------------------------
+
+Below is one example on how to create a virtual server. You can find more
+information on the OpenVZ wiki pages
+http://wiki.openvz.org/Debian_template_creation.
+
+First create a filesystem. You can do that by unpacking an image
+or by using debootstrap. Below is an example by using debootstrap. You can
+change the VEID (100) to some other value if you like. Avoid zeros in the
+beginning of the VEID as vzctl treat this value as an integer. This means that
+001 is translated to 1. Also avoid VEID below 100 as they are reserved for
+package management work.
+
+  debootstrap --arch i386 squeeze /var/lib/vz/private/100 \
+	http://ftp.uk.debian.org/debian
+
+When debootstrap has finished successfully the virtual server needs
+to have a configuration:
+
+  vzctl set 100 --applyconfig basic --save
+  echo "OSTEMPLATE=debian" >> /etc/vz/conf/100.conf
+
+
+
+The newly created filesystem needs to be updated with some configuration
+changes.
+
+Give it a hostname.
+  vzctl set 100 --hostname yourhostname --save
+  echo yourhostname.yourdomain > /var/lib/vz/private/100/etc/mailname
+
+Disable getty in /etc/inittab as openvz do not have that.
+
+  sed -i -e '/getty/d' /var/lib/vz/private/100/etc/inittab
+
+Link /etc/mtab to /proc/mtab to make mount work as expected.
+
+  ln -sf /proc/mounts /var/lib/vz/private/100/etc/mtab
+
+If an IP address is needed for the virtual server it should be added as well:
+
+  vzctl set 100 --ipadd x.x.x.x --save
+
+To download updates you may need to specify a DNS server for it as well:
+
+  vzctl set 100 --nameserver x.x.x.x --save
+
+In that case you also need to enable network configuration. More details about
+network configuration is available in the "Network Configuration" chapter
+below.
+
+Now the virtual server can be started:
+
+  vzctl start 100
+
+
+Enter the virtual server to install your software:
+
+  vzctl enter 100
+  apt-get update
+  apt-get install ssh
+
+
+Hardware or kernel related packages can be removed as they are not usable
+on a virtual server:
+
+  dpkg --purge module-init-tools
+
+
+
+
+Network configuration:
+----------------------
+
+If you want network access for the virtual server then you need to
+enable IP forwarding. You do that in the /etc/sysctl.conf file
+by using the following directives:
+
+  # On Hardware Node we generally need
+  # packet forwarding enabled and proxy arp disabled
+  net.ipv4.ip_forward=1
+  net.ipv4.conf.default.forwarding=1
+  net.ipv4.conf.default.proxy_arp=0
+
+  # Enables source route verification
+  net.ipv4.conf.all.rp_filter = 1
+
+  # Enables the magic-sysrq key
+  kernel.sysrq = 1
+
+  # we do not want all our interfaces to send redirects
+  net.ipv4.conf.default.send_redirects = 1
+  net.ipv4.conf.all.send_redirects = 0
+
+In most situations this is sufficient. However there are situations when you
+might want to enable ARP handling manually. In such case follow the
+instructions below.
+
+It is possible to enable proxy_arp manually for the network devices that you
+want your virtual hosts to be accessible on. This can be used to avoid
+possible race conditions in case you use DHCP for the network interface.
+
+  sysctl -w net.ipv4.conf.default.proxy_arp=1
+
+or
+
+  sysctl -w net.ipv4.conf.$DEV.proxy_arp=1
+
+You can add this to a specific interface in the network configuration
+(/etc/network/interfaces) by the following lines:
+
+	up sysctl -w net.ipv4.conf.%DEV%.proxy_arp=100
+	pre-down sysctl -w net.ipv4.conf.%DEV%.proxy_arp=0
+
+Replace %DEV% with your device name (ie. eth0).
+
+Alternatively you set the following to the /etc/sysctl.conf file.
+
+  net.ipv4.conf.default.proxy_arp = 1
+
+
+
+IPv6:
+-----
+
+IPv6 forwarding must be globally enabled (/sbin/sysctl -q -w
+net.ipv6.conf.all.forwarding=1) and hardware node public ethernet device
+must be statically IPv6-configured in order to get IPv6 support working.
+
+
+
+Enable and disable root login:
+------------------------------
+
+To disable login for root you enter the virtual server and
+run the following command:
+
+  usermod -L root
+
+To enable it again you can run the following command from
+outside the virtual server.
+
+  vzctl set 100 --userpasswd root:xxxx
+
+
+
+ -- Ola Lundqvist <opal@debian.org>, Tue, 10 Oct 2006 06:44:59 +0200

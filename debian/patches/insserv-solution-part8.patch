@@ -1,0 +1,90 @@
+From: Thorsten Schifferdecker <curx@openvz.org>
+Date: Wed, 8 Sep 2010 08:00:53 +0000 (+0400)
+Subject: man/vzeventd.8: add
+X-Git-Url: http://git.openvz.org/?p=vzctl;a=commitdiff_plain;h=746cbf0a6196bd5016bd7df613b89fa18ce49895;hp=1148f7a5174ad448218eb625e99d47b9b479be50
+
+man/vzeventd.8: add
+
+Add the man page, required by Debian standards and useful overall.
+
+[kir@openvz.org: additions to man page; added it to vzctl.spec]
+
+http://bugzilla.openvz.org/1635
+---
+
+diff --git a/man/Makefile.am b/man/Makefile.am
+index ddfb5f1..e9ee79a 100644
+--- a/man/Makefile.am
++++ b/man/Makefile.am
+@@ -27,7 +27,9 @@ man_MANS = arpsend.8 \
+            vzmigrate.8 \
+            vzpid.8 \
+            vzsplit.8 \
+-           vzifup-post.8
++           vzifup-post.8 \
++           vzeventd.8
++
+ 
+ EXTRA_DIST = $(man_MANS)
+ 
+diff --git a/man/vzeventd.8 b/man/vzeventd.8
+new file mode 100644
+index 0000000..06c6def
+--- /dev/null
++++ b/man/vzeventd.8
+@@ -0,0 +1,43 @@
++.TH vzeventd 8 "7 Sep 2010" "OpenVZ" "Containers"
++.SH NAME
++vzeventd \- the OpenVZ events daemon.
++.SH SYNOPSIS
++vzeventd [\fB-v\fR] [\fB-d\fR]
++.br
++vzeventd \fB-h\fR
++.SH OPTIONS
++.IP \fB-v\fR 4
++Increase verbosity (can be used multiple times).
++.IP \fB-d\fR 4
++Debug mode (do not daemonize, run in foreground).
++.IP \fB-h\fR 4
++Display help and exit.
++.SH DESCRIPTION
++This daemon takes care of events sent by the OpenVZ kernel
++(via netlink socket) and performs required actions associated with
++those events, by running specific scripts. Every event received contains
++a container ID, which is passed to the script as \fBVEID\fR environment
++variable.
++.P
++Current list of known events and associated \fBvzeventd\fR actions are:
++.IP \fBstart\fR 4
++Ignore.
++.IP \fBstop\fR 4
++Run /usr/lib/vzctl/scripts/vzevent-stop. This script takes care of removing
++ARP and routing records for the given CT from CT0.
++.IP \fBmount\fR 4
++Ignore.
++.IP \fBumount\fR 4
++Ignore.
++.IP \fBreboot\fR 4
++Run /usr/lib/vzctl/scripts/vzevent-reboot. This script takes care of rebooting
++a given CT.
++.P
++.SH RETURN CODE
++Returns 0 upon success.
++.SH LICENSE
++Copyright (C) 2010, Parallels, Inc. Licensed under GNU GPL.
++.SH AUTHOR
++.PP
++This manual page was written by Thorsten Schifferdecker <tsd@debian.systs.org>
++for the \fBDebian GNU/Linux\fP system (but may be used by others).
+diff --git a/vzctl.spec b/vzctl.spec
+index a08659e..b9a4452 100644
+--- a/vzctl.spec
++++ b/vzctl.spec
+@@ -115,6 +115,7 @@ rm -rf $RPM_BUILD_ROOT
+ %attr(755,root,root) %{_netdir}/ifdown-venet
+ %attr(644,root,root) %{_netdir}/ifcfg-venet0
+ %attr(644, root, root) %{_mandir}/man8/vzctl.8.*
++%attr(644, root, root) %{_mandir}/man8/vzeventd.8.*
+ %attr(644, root, root) %{_mandir}/man8/vzmigrate.8.*
+ %attr(644, root, root) %{_mandir}/man8/arpsend.8.*
+ %attr(644, root, root) %{_mandir}/man8/vzsplit.8.*

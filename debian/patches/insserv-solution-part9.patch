@@ -1,0 +1,114 @@
+From: Kir Kolyshkin <kir@openvz.org>
+Date: Wed, 8 Sep 2010 08:26:40 +0000 (+0400)
+Subject: init.d/vzfunctions: moved to $vzlibdir/initd-functions
+X-Git-Url: http://git.openvz.org/?p=vzctl;a=commitdiff_plain;h=22cfbfa17a63c536eb8f69d305c60289dbdaf290;hp=746cbf0a6196bd5016bd7df613b89fa18ce49895
+
+init.d/vzfunctions: moved to $vzlibdir/initd-functions
+
+Apparently LSB forbids to put auxiliary stuff in /etc/init.d/, so
+move vzfunctions from there to $vzlibdir, renaming it to initd-functions
+to avoid confusion.
+
+Reported-by: Ola Lundqvist <ola@inguza.com>
+Signed-off-by: Kir Kolyshkin <kir@openvz.org>
+---
+
+diff --git a/etc/init.d/.gitignore b/etc/init.d/.gitignore
+index 76b8f02..40681ac 100644
+--- a/etc/init.d/.gitignore
++++ b/etc/init.d/.gitignore
+@@ -1,6 +1,6 @@
+ vz-redhat
+ vz-gentoo
+-vzfunctions
++initd-functions
+ vzeventd-redhat
+ vzeventd-gentoo
+ Makefile.in
+diff --git a/etc/init.d/Makefile.am b/etc/init.d/Makefile.am
+index 60966e8..fb93f33 100644
+--- a/etc/init.d/Makefile.am
++++ b/etc/init.d/Makefile.am
+@@ -15,17 +15,17 @@
+ #  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ #
+ 
+-INITSCRIPTS = vz-redhat vz-gentoo vzeventd-redhat vzeventd-gentoo vzfunctions
++INITSCRIPTS = vz-redhat vz-gentoo vzeventd-redhat vzeventd-gentoo
++vzlib_DATA = initd-functions
+ 
+-EXTRA_DIST = $(INITSCRIPTS:%=%.in)
++EXTRA_DIST = $(INITSCRIPTS:%=%.in) $(vzlib_DATA:%=%.in)
+ 
+-CLEANFILES = $(INITSCRIPTS)
++CLEANFILES = $(INITSCRIPTS) $(vzlib_DATA)
+ 
+ include $(top_srcdir)/pathsubst.am
+ 
+-install-redhat: vzfunctions vz-redhat vzeventd-redhat
++install-redhat: vz-redhat vzeventd-redhat
+ 	$(mkinstalldirs) $(DESTDIR)$(initddir)
+-	$(INSTALL_DATA) vzfunctions $(DESTDIR)$(initddir)/vzfunctions
+ 	$(INSTALL_SCRIPT) vz-redhat $(DESTDIR)$(initddir)/vz
+ 	$(INSTALL_SCRIPT) vzeventd-redhat $(DESTDIR)$(initddir)/vzeventd
+ 
+diff --git a/etc/init.d/vzfunctions.in b/etc/init.d/initd-functions.in
+similarity index 100%
+rename from etc/init.d/vzfunctions.in
+rename to etc/init.d/initd-functions.in
+diff --git a/etc/init.d/vz-redhat.in b/etc/init.d/vz-redhat.in
+index 5536031..0005f26 100755
+--- a/etc/init.d/vz-redhat.in
++++ b/etc/init.d/vz-redhat.in
+@@ -38,7 +38,7 @@
+ 
+ # This line is needed to cheat /etc/init.d/rc who expects action word
+ 
+-. /etc/init.d/vzfunctions
++. @VZLIBDIR@/initd-functions
+ 
+ VZQUOTA=@SBINDIR@/vzquota
+ CONFIG_DIR=@PKGCONFDIR@/conf
+diff --git a/etc/init.d/vzeventd-redhat.in b/etc/init.d/vzeventd-redhat.in
+index eccc420..14c3130 100755
+--- a/etc/init.d/vzeventd-redhat.in
++++ b/etc/init.d/vzeventd-redhat.in
+@@ -22,7 +22,7 @@
+ #              and performs required actions associated with those events.
+ ### END INIT INFO
+ 
+-. /etc/init.d/vzfunctions
++. @VZLIBDIR@/vzfunctions
+ 
+ prog=vzeventd
+ lockfile=$VARLOCK/$prog
+diff --git a/pathsubst.am b/pathsubst.am
+index f47334e..f5bbd56 100644
+--- a/pathsubst.am
++++ b/pathsubst.am
+@@ -22,7 +22,8 @@ pathsubst_RULES = \
+ 	s!@'PKGCONFDIR'@!$(pkgconfdir)!g; \
+ 	s!@'VPSCONFDIR'@!$(vpsconfdir)!g; \
+ 	s!@'PKGDATADIR'@!$(pkgdatadir)!g; \
+-	s!@'PKGLIBDIR'@!$(pkglibdir)!g;
++	s!@'PKGLIBDIR'@!$(pkglibdir)!g; \
++	s!@'VZLIBDIR'@!$(vzlibdir)!g;
+ 
+ pathsubst = sed -e '$(pathsubst_RULES)'
+ 
+diff --git a/vzctl.spec b/vzctl.spec
+index b9a4452..c6b0465 100644
+--- a/vzctl.spec
++++ b/vzctl.spec
+@@ -76,9 +76,10 @@ rm -rf $RPM_BUILD_ROOT
+ 
+ %files
+ %defattr(-,root,root)
++%dir %{_pkglibdir}/scripts
++%attr(755,root,root) %{_pkglibdir}/scripts/initd-functions
+ %attr(755,root,root) %{_initddir}/vz
+ %attr(755,root,root) %{_initddir}/vzeventd
+-%attr(644,root,root) %{_initddir}/vzfunctions
+ %dir %attr(755,root,root) %{_lockdir}
+ %dir %attr(755,root,root) %{_dumpdir}
+ %dir %attr(700,root,root) %{_privdir}

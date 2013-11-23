@@ -1,0 +1,562 @@
+vzctl (3.0.24-12) unstable; urgency=high
+
+  * Corrected the issue that vzeventd is not enabled as an init script
+    by default. Closes: #610891.
+
+ -- Ola Lundqvist <opal@debian.org>  Tue, 25 Jan 2011 07:18:05 +0100
+
+vzctl (3.0.24-11) unstable; urgency=low
+
+  * Applied a documentation update for README.Debian as the name of the
+    sample configuration file has changed name. Closes: #605050.
+    Thanks to Guido Gunther <agx@sigxcpu.org> for the patch and report.
+
+ -- Ola Lundqvist <opal@debian.org>  Fri, 03 Dec 2010 08:11:33 +0100
+
+vzctl (3.0.24-10) unstable; urgency=medium
+
+  * Correction of the solution for #597876. A typo cause the correction
+    to not work.
+
+ -- Ola Lundqvist <opal@debian.org>  Sat, 06 Nov 2010 12:46:23 +0100
+
+vzctl (3.0.24-9) unstable; urgency=high
+
+  * Correction of the solution of #600455 in last upload. Applied patch
+    from upstream. Thanks to Kir Kolyshkin <kir@openvz.org> for fast support.
+    This patch allows vzeventd to be started.
+  * Addtional corrections for vzeventd init function:
+    Makes sure that init script do not return error when already started.
+    Make sure the mandatory status command works.
+    The start-stop-daemon was called with wrong arguments. Fixed now.
+
+ -- Ola Lundqvist <opal@debian.org>  Fri, 29 Oct 2010 18:02:11 +0200
+
+vzctl (3.0.24-8) unstable; urgency=medium
+  [ Ola Lundqvist ]
+  * Solved a package purge problem if vzctl is installed inside the container.
+    Thanks to Apollon Oikonomopoulos <apoikos@gmail.com> for the report.
+    Closes: #597522.
+  * Solved the problem that HISTFILE and HOME are set to wrong values.
+    Thanks to Daniel Hahler for the correction. Closes: #597555.
+    The patch is in reverse order in debian/patches.
+  * Correction to a debian specific patch that cause problem with routing.
+    Closes: #597876. Thanks to Daniel Hahler <debian-bugs@thequod.de> for the
+    proposed fix.
+
+  [ Florian Ernst ]
+  * debian/vzctl.postrm: correctly extend line in Lenny cleanup.
+    Closes: #600585.
+
+  [ Gregor Herrmann ]
+  * Fix "typo in postinst breaks ct reboot feature / vzeventd isn't
+    start at bootup": check for the correct init script; patch by Thorsten
+    Schifferdecker (closes: #600081).
+  * Fix "ct reboot feature broken - part II"; store and apply upstream patch
+    that uses start-stop-daemon (closes: #600455).
+
+ -- Ola Lundqvist <opal@debian.org>  Wed, 27 Oct 2010 07:06:45 +0200
+
+vzctl (3.0.24-7) unstable; urgency=medium
+
+  * No longer ignore errors on startup.
+
+ -- Ola Lundqvist <opal@debian.org>  Tue, 14 Sep 2010 06:31:34 +0200
+
+vzctl (3.0.24-6) unstable; urgency=low
+
+  * Configuration files are not allowed to be removed on upgrade. Solved.
+
+ -- Ola Lundqvist <opal@debian.org>  Mon, 13 Sep 2010 21:57:44 +0200
+
+vzctl (3.0.24-5) unstable; urgency=medium
+
+  * Make sure vzeventd can read options from /etc/default/vzeventd.
+    This is a correction of the backported solution for #576227 in last upload.
+    Documented this functionality as well.
+  * Changed the README.Debian file so that it documents how to install squeeze
+    instead of how to install lenny. In a addition a number of language
+    corrections was made. Also clarification on network configuration was done.
+    Closes: #574522.
+  * Documented in the README.Debian file that /etc/mailname should be changed
+    when creating the container. Closes: #50086.
+  * Changed the package description so it do not refer to the kernel patch
+    package as it do no longer exist.
+
+ -- Ola Lundqvist <opal@debian.org>  Fri, 10 Sep 2010 18:56:42 +0200
+
+vzctl (3.0.24-4) unstable; urgency=medium
+
+  * Backported solution from upstream to solve the problem with vz
+    container reboot and insserv. Closes: #576227. This solution is provided
+    by a series of patches. A new vzeventd function is introduced and removes
+    the need for cron jobs.
+  * Had to run the upstream build commands. Stored in autogen.sh.    
+  * Now starts after installation as well. But only if the kernel support
+    openvz in order to avoid installation failures. Closes: #411902.
+  * Use correct install target install-debian instead of install-redhat. This
+    introduces a vzufup-post network rule to add arp parameters.
+  * Updated the README.Debian file to reflect the recent changes in the
+    vzctl package.
+  * Backport of solutions in from 3.0.24.1:
+     vzmigrate: ignore error 24 from the first rsync run
+     vzmigrate: migrate premount/postumount action scripts
+     Revert "Check for memory granted by get_dist_name"
+     bash_completion: vzlist's stderr goes to /dev/null
+  * Backport of solutions in 3.0.24.2:
+     Restore vzgetnetdev incompatibility with mawk. Closes: #592991.
+     debian-add_ip.sh: fixlet for Ubuntu networking
+     vzctl start: do not remove 127.0.0.1 aliases in /etc. Closes: #594003.
+     list2str_c produces wrong string when list is empty (data corruption)
+
+ -- Ola Lundqvist <opal@debian.org>  Tue, 08 Sep 2010 22:56:50 +0200
+
+vzctl (3.0.24-3) unstable; urgency=medium
+
+  * Correction to the solution for #594783. Changed to more suitable LSB
+    header.
+
+ -- Ola Lundqvist <opal@debian.org>  Mon, 30 Aug 2010 07:48:46 +0200
+
+vzctl (3.0.24-2) unstable; urgency=low
+
+  * Generates vzquota init script with correct LSB header. Closes:
+    #594783. Thanks to Stefan Schlesinger <sts@ono.at> for the patch.
+
+ -- Ola Lundqvist <opal@debian.org>  Sun, 29 Aug 2010 16:24:37 +0200
+
+vzctl (3.0.24-1) unstable; urgency=low
+
+  * New upstream release. Closes: #588266.
+    Re-applied correction for #579174 in a slightly different way according
+    to latest information in upstream bugtracker.
+  * Added shlibdeps information.
+  * Lintian override change for shared library information for the new version
+    of the shared library.
+  * Lintian override added for the fact that some scripts call init script
+    directly.
+  * Updated to debhelper compatibility version 7.
+  * Updated to debian standards version 3.9.0.
+  * Changed from ch_clean -k to dh_prep in debian/rules.
+
+ -- Ola Lundqvist <opal@debian.org>  Sun, 25 Jul 2010 22:59:11 +0200
+
+vzctl (3.0.23-18) unstable; urgency=low
+
+  * Solved serious build problem, closes: #584359.
+    The fix is to copy the .am make file to the .in version.
+
+ -- Ola Lundqvist <opal@debian.org>  Thu, 17 Jun 2010 22:07:28 +0200
+
+vzctl (3.0.23-17) unstable; urgency=low
+
+  * Applied patch to make it possible to have head and tail interface
+    definitions. Closes: #514001. Thanks to Ivan Vilata i Balaguer
+    <ivan@selidor.net> for the suggestion. The solution is a backport
+    from 3.0.24.
+  * Solution for openvz bug 556 - vz init script doesn't check eth
+    status before running. Backport fom 3.0.24.
+
+ -- Ola Lundqvist <opal@debian.org>  Sun, 16 May 2010 12:48:40 +0200
+
+vzctl (3.0.23-16) unstable; urgency=low
+
+  * Corrected bashism in vzmigrate by enforcing bash. Closes: #581147.
+
+ -- Ola Lundqvist <opal@debian.org>  Sun, 16 May 2010 12:18:39 +0200
+
+vzctl (3.0.23-15) unstable; urgency=low
+
+  * Adding one more fix from for the IPv6 issues seen.
+
+ -- Ola Lundqvist <opal@debian.org>  Mon, 26 Apr 2010 21:14:12 +0200
+
+vzctl (3.0.23-14) unstable; urgency=low
+
+  * Applied patch from Denis Feklushkin <denis.feklushkin@gmail.com> to solve
+    the IPv6 issue. Closes: #579174.
+
+ -- Ola Lundqvist <opal@debian.org>  Mon, 26 Apr 2010 19:22:10 +0200
+
+vzctl (3.0.23-13) unstable; urgency=low
+
+  * Documented that vzsplit should be used to create larger
+    configuration files. Closes: #482283.
+
+ -- Ola Lundqvist <opal@debian.org>  Mon, 26 Apr 2010 07:30:41 +0200
+
+vzctl (3.0.23-12) unstable; urgency=low
+
+  * Warning about proxy_arp removed. Upstream did not like it and the
+    solution was not perfect either as there are many solutions to avoid
+    this.
+
+ -- Ola Lundqvist <opal@debian.org>  Fri, 19 Mar 2010 07:17:59 +0100
+
+vzctl (3.0.23-11) unstable; urgency=low
+
+  * Returned the -e option for vzmigrate. So now we are back on how
+    upstream defined it in the first place.
+
+ -- Ola Lundqvist <opal@debian.org>  Thu, 25 Feb 2010 20:06:35 +0100
+
+vzctl (3.0.23-10) unstable; urgency=low
+
+  * Corrected bash compatibility issue and output issue in vzmigrate.
+    Closes: #562736. Thanks to James Stanley <james@incoherency.co.uk> and
+    Teodor MICU <mteodor@gmail.com> for good suggestions.
+
+ -- Ola Lundqvist <opal@debian.org>  Mon, 28 Dec 2009 21:20:39 +0100
+
+vzctl (3.0.23-9) unstable; urgency=low
+
+  * Correction for destroyed symlink for configuration file backported from
+    upstream GIT. This solves a potential data corruption issue as described
+    in the bug report. Closes: #557785.
+  * Applied patch for bash completion so it is only performed for users
+    with root privileges. Closes: #560303. Thanks to Ignace Mouzannar
+    <mouzannar@gmail.com> for the patch.
+
+ -- Ola Lundqvist <opal@debian.org>  Sun, 20 Dec 2009 19:51:54 +0100
+
+vzctl (3.0.23-8) unstable; urgency=low
+
+  * Init script dependency correction, closes: #547334. Thanks to Petter
+    Reinholdtsen <pere@hungry.com> fot the patch.
+  * Useless udev rules file is not needed. Closes: #520190.
+  * Documented that proxy_arp needs to be set in order to avoid this race
+    condition. Closes: #495667.
+  * Removed the suggestion of linux-patch-openvz. Closes: #515482. The kernel
+    packages change too frequently to suggest a specific version.
+
+ -- Ola Lundqvist <opal@debian.org>  Sat, 26 Sep 2009 21:48:45 +0200
+
+vzctl (3.0.23-7) unstable; urgency=low
+
+  * Documented how what is needed to support IPv6.
+
+ -- Ola Lundqvist <opal@debian.org>  Sun, 13 Sep 2009 21:48:25 +0200
+
+vzctl (3.0.23-6) unstable; urgency=low
+
+  * Correction of bashism problem in scripts/vpsreboot and
+    scripts/vpsnetclean. Closes: #530219.
+
+ -- Ola Lundqvist <opal@debian.org>  Sat, 23 May 2009 20:46:52 +0200
+
+vzctl (3.0.23-5) unstable; urgency=low
+
+  * Correction applied for vzctl destroy problem. Closes: #527986.
+
+ -- Ola Lundqvist <opal@debian.org>  Sat, 23 May 2009 17:26:40 +0200
+
+vzctl (3.0.23-4) unstable; urgency=low
+
+  * Updated the documentation for the network configuration in
+    README.Debian.
+  * Made the warning about network configuration visible in more correct
+    situations.
+
+ -- Ola Lundqvist <opal@debian.org>  Mon, 30 Mar 2009 21:25:08 +0200
+
+vzctl (3.0.23-3) unstable; urgency=low
+
+  * Upload to unstable.
+    Correct build problem, closes: #518853.
+    Includes fixes for ubuntu, closes: #504449, #490060.
+  * Updated to standards version 3.8.0.
+  * debian/rules file will fail if the clean target fails.
+  * Added a lintian override for empty usr/lib/vzctl/modules/ dir.
+
+ -- Ola Lundqvist <opal@debian.org>  Mon, 30 Mar 2009 07:40:53 +0200
+
+vzctl (3.0.23-2) experimental; urgency=low
+
+  * Reverted patch from Sebastian Klamar <bug.vzctl@sebastian.klamar.name>
+    as the fix caused data overwriting during startup. It was the intention
+    but that is not a good thing. Reopens: #500862.
+
+ -- Ola Lundqvist <opal@debian.org>  Sun, 30 Nov 2008 19:23:13 +0100
+
+vzctl (3.0.23-1) experimental; urgency=low
+
+  * New upstream release
+    This release includes a number of fixes for ubuntu,
+    closes: #504449, #490060.
+  * Applied patch from Sebastian Klamar <bug.vzctl@sebastian.klamar.name>
+    that fix /etc/mailname creation in a proper way. This has been applied
+    upstream for next 3.0.24 version as well. Closes: #500862.
+  * Corrected examples location.
+  * Changed from make clean to make distclean, to really clean the build
+    before rebuild.
+  * Changed copyright name in debian/copyright file because of name change
+    of the company providing the upstream source.
+
+ -- Ola Lundqvist <opal@debian.org>  Tue, 18 Nov 2008 20:16:24 +0100
+
+vzctl (3.0.22-14) unstable; urgency=medium
+
+  * Correction to make it work with ipv6, closes: #505792. Thanks to
+    Sven Koch <haegar@sdinet.de> for pointing me to the patch.
+
+ -- Ola Lundqvist <opal@debian.org>  Sat, 15 Nov 2008 20:35:07 +0100
+
+vzctl (3.0.22-13) unstable; urgency=medium
+
+  * Corrected bashism in vznetcfg. Closes: #499250.
+
+ -- Ola Lundqvist <opal@debian.org>  Sat, 25 Oct 2008 16:20:55 +0200
+
+vzctl (3.0.22-12) unstable; urgency=low
+
+  * Correction of bashisms in some helper scripts, closes: #501374.
+
+ -- Ola Lundqvist <opal@debian.org>  Sat, 18 Oct 2008 15:27:43 +0200
+
+vzctl (3.0.22-11) unstable; urgency=low
+
+  * Correction of init script so that it starts and stop on correct
+    runlevels, closes: #493206.
+    Thanks to Teodor <mteodor@gmail.com> for the patch.
+
+ -- Ola Lundqvist <opal@debian.org>  Thu,  7 Aug 2008 07:03:36 +0200
+
+vzctl (3.0.22-10) unstable; urgency=low
+
+  * Updated README.Debian file to be suitable for lenny. Thanks to
+    Miroslav Kure <kurem@upcase.inf.upol.cz> for the patch.
+
+ -- Ola Lundqvist <opal@debian.org>  Mon,  4 Aug 2008 23:08:43 +0200
+
+vzctl (3.0.22-9) unstable; urgency=low
+
+  * Correction of capability problem on some platforms. Closes: #482974.
+
+ -- Ola Lundqvist <opal@debian.org>  Sat,  7 Jun 2008 19:26:21 +0200
+
+vzctl (3.0.22-8) unstable; urgency=low
+
+  * Changed suggestion and reference to linux-patch-openvz instead of
+    kernel-patch-openvz, closes: #482201.
+
+ -- Ola Lundqvist <opal@debian.org>  Sun, 25 May 2008 13:27:51 +0200
+
+vzctl (3.0.22-7) unstable; urgency=low
+
+  * Correction for bash completion merged from ubuntu. Thanks to Daniel
+    Hahler <debian-bugs@thequod.de> for this information. Closes: #479797.
+  * Also changed so that the default OS TEMPLATE is Debian and not
+    fedora-core-4.
+
+ -- Ola Lundqvist <opal@debian.org>  Sun, 11 May 2008 14:33:56 +0200
+
+vzctl (3.0.22-6) unstable; urgency=low
+
+  * Applied patch from upstream git archive to correct a syntax error
+    problem, closes: #477783.
+  * Added ldconfig to postinst and postrm.
+  * Added lintian override for two issues reported. They are not bugs.
+  * Applied patch from Raphael Geissert <atomo64@gmail.com> to correct the
+    bashism problems found in vzpid, vzmigrate and vznetcfg tools.
+    Closes: #472901.
+
+ -- Ola Lundqvist <opal@debian.org>  Sun, 27 Apr 2008 21:53:11 +0200
+
+vzctl (3.0.22-5) unstable; urgency=low
+
+  * Updated README.Debian to use /etc/sysctl.conf instead of depricated
+    directive in /etc/network/options.
+  * Corrected two bashism issues, closes: #468468.
+    Thanks to Raphael Hertzog <hertzog@debian.org> for both the above
+    corrections.
+
+ -- Ola Lundqvist <opal@debian.org>  Sun,  2 Mar 2008 16:44:27 +0100
+
+vzctl (3.0.22-4) unstable; urgency=low
+
+  * Changed shell interpreter from /bin/sh to /bin/bash for vz init
+    script and vzmigrate, closes: #465377.
+  * Added upgrade path for --name setting, closes: #460310.
+
+ -- Ola Lundqvist <opal@debian.org>  Tue, 12 Feb 2008 18:15:58 +0100
+
+vzctl (3.0.22-3) unstable; urgency=low
+
+  * Correction for #459717. Thanks to eyck <eyck.debian@kuszelas.eu> for the
+    report.
+
+ -- Ola Lundqvist <opal@debian.org>  Sun, 27 Jan 2008 10:24:49 +0100
+
+vzctl (3.0.22-2) unstable; urgency=low
+
+  * Correction to a bashism bug in vps-functions, closes: #459717.
+    Thanks to Pawel Tecza <ptecza@uw.edu.pl> for the patch.
+
+ -- Ola Lundqvist <opal@debian.org>  Wed,  9 Jan 2008 07:53:13 +0100
+
+vzctl (3.0.22-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Ola Lundqvist <opal@debian.org>  Tue, 25 Dec 2007 20:44:56 +0100
+
+vzctl (3.0.18-1) unstable; urgency=low
+
+  * New upstream release.
+    Closes: #415645, #417540, #415673.
+  * With this the init script is POSIX compatible, closes: #420879.
+  * Corrected permission of etc/vz/cron/vz because of lintian warning.
+  * Added removal of config.log and config.status in debian/rules
+    clean target.
+
+ -- Ola Lundqvist <opal@debian.org>  Thu, 16 Aug 2007 13:09:45 +0200
+
+vzctl (3.0.16-4) unstable; urgency=low
+
+  * Etch has been released which means that this version can be uploaded
+    to unstable.
+
+ -- Ola Lundqvist <opal@debian.org>  Tue, 10 Apr 2007 18:08:16 +0200
+
+vzctl (3.0.16-3) experimental; urgency=low
+
+  * Merge of display dir correction for #415645 from 3.0.11-15.
+
+ -- Ola Lundqvist <opal@debian.org>  Thu, 22 Mar 2007 05:37:55 +0100
+
+vzctl (3.0.16-2) experimental; urgency=low
+
+  * Allowed /srv/vz to vzsplit.c as well (related to bug #415645).
+
+ -- Ola Lundqvist <opal@debian.org>  Wed, 21 Mar 2007 06:02:16 +0100
+
+vzctl (3.0.16-1) experimental; urgency=low
+
+  * New upstream release.
+  * To build it configure line was added to rules file.
+  * Upgrade path for vz related cron files.
+  * Added support for /vz, /var/lib/vz and /opt/vz to vzsplit.c.
+    It should later follow the configuration file.
+
+ -- Ola Lundqvist <opal@debian.org>  Fri, 16 Mar 2007 19:00:59 +0100
+
+vzctl (3.0.13-4) experimental; urgency=low
+
+  * Corrected documentation link in arp warning.
+
+ -- Ola Lundqvist <opal@debian.org>  Tue,  2 Jan 2007 21:16:51 +0100
+
+vzctl (3.0.13-3) experimental; urgency=low
+
+  * Make sure that rsync work as expected when clean is off.
+  * Added dependency on vzquota.
+
+ -- Ola Lundqvist <opal@debian.org>  Tue,  2 Jan 2007 20:20:38 +0100
+
+vzctl (3.0.13-2) experimental; urgency=low
+
+  * Added sparc arch as well to build all supported architectures.
+  * Changed from ppc to powerpc.
+  * Added architecture support text to README.Debian file.
+  * Made sure that etc/init.d/vz is installed properly.
+
+ -- Ola Lundqvist <opal@debian.org>  Sat, 30 Dec 2006 10:39:49 +0100
+
+vzctl (3.0.13-1) experimental; urgency=low
+
+  * New upstream release.
+  * Added PPC target for testing.
+
+ -- Ola Lundqvist <opal@debian.org>  Wed, 27 Dec 2006 10:37:26 +0100
+
+vzctl (3.0.11-8) unstable; urgency=medium
+
+  * Added recommendataion of rsync as the migration tools require it to
+    run, closes: #401828.
+
+ -- Ola Lundqvist <opal@debian.org>  Thu,  7 Dec 2006 21:54:48 +0100
+
+vzctl (3.0.11-7) unstable; urgency=medium
+
+  * Changed location of the lock file from /var/lock/subsys to
+    /var/lock, closes: #399129.
+
+ -- Ola Lundqvist <opal@debian.org>  Fri, 17 Nov 2006 06:56:14 +0100
+
+vzctl (3.0.11-6) unstable; urgency=low
+
+  * Added reference to openvz prepared kernels.
+
+ -- Ola Lundqvist <opal@debian.org>  Mon, 30 Oct 2006 21:43:27 +0100
+
+vzctl (3.0.11-5) unstable; urgency=high
+
+  * No longer start vz by default on installation, closes: #378045.
+  * Updated description of the package so that it is clear that a
+    patched kernel is needed.
+  * Added kernel-patch-openvz to the suggests field.
+
+ -- Ola Lundqvist <opal@debian.org>  Sun, 15 Oct 2006 13:27:31 +0200
+
+vzctl (3.0.11-4) unstable; urgency=medium
+
+  * More README.Debian file updates to make it an useful guide to get
+    started.
+
+ -- Ola Lundqvist <opal@debian.org>  Tue, 10 Oct 2006 06:57:01 +0200
+
+vzctl (3.0.11-3) unstable; urgency=medium
+
+  * Updated the README.Debian file to contain information on how to
+    create the first virtual server.
+
+ -- Ola Lundqvist <opal@debian.org>  Mon,  9 Oct 2006 21:17:07 +0200
+
+vzctl (3.0.11-2) unstable; urgency=low
+
+  * Build only for vzctl, amd64 and ia64, closes: #390627.
+
+ -- Ola Lundqvist <opal@debian.org>  Mon,  2 Oct 2006 21:32:21 +0200
+
+vzctl (3.0.11-1) unstable; urgency=low
+
+  * New upstream release
+  * Added some more options to the make install in debian/rules file.
+  * Changed default vz dir from /vz to /var/lib/vz.
+  * Netscripts are no longer installed as they are only useful on
+    RedHat or Suse systems.
+  * Corrected minor error in manpage for vz.conf, closes: #378258.
+    Thanks to Andrew Schulman <andrex@alumni.utexas.net> for pointing to
+    the fault and solution.
+
+ -- Ola Lundqvist <opal@debian.org>  Sun,  1 Oct 2006 22:19:44 +0200
+
+vzctl (3.0.10-4) unstable; urgency=low
+
+  * Warning and documentation for proxy_arp issue, closes: #387762.
+  * Added dependency on iproute package, closes: #387417.
+
+ -- Ola Lundqvist <opal@debian.org>  Tue, 26 Sep 2006 07:31:58 +0200
+
+vzctl (3.0.10-3) unstable; urgency=low
+
+  * Applied patch from upstream to list netdevices correctly, closes:
+    #382868.
+    Thanks to Sebastian Werner <Sebastian.Werner@urz.uni-hd.de>.
+  * Correction of awk path, closes: #383103.
+    Thanks to Sebastian Werner <Sebastian.Werner@urz.uni-hd.de>.
+  * Make bash the shell for init scripts, closes: #382666.
+	
+ -- Ola Lundqvist <opal@debian.org>  Tue, 15 Aug 2006 07:04:19 +0200
+
+vzctl (3.0.10-2) unstable; urgency=low
+
+  * Correction of installation problem, closes: #377686.
+
+ -- Ola Lundqvist <opal@debian.org>  Thu, 13 Jul 2006 22:23:40 +0200
+
+vzctl (3.0.10-1) unstable; urgency=low
+
+  * Initial release, closes: #360869.
+
+ -- Ola Lundqvist <opal@debian.org>  Mon, 12 Jun 2006 22:06:54 +0200

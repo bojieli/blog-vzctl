@@ -1,0 +1,38 @@
+.TH vzsplit 8 "10 Dec 2009" "OpenVZ" "Containers"
+.SH NAME
+vzsplit \- generate a sample container configuration file with a certain set of system resource control parameters.
+.SH SYNOPSIS
+vzsplit [\fB-n\fR \fInumve\fR] [\fB-f\fR \fIconf_name\fR] [\fB-s\fR \fIswapsize\fR]
+.SH DESCRIPTION
+The \fBvzsplit\fR utility is used to split the Hardware Node into equal parts.
+It generates a full set of system resource control parameters for the
+given number of containers. The values are calculated from
+the total physical memory of the Hardware Node the utility runs on, and
+the number of containers the Hardware Node shall be able
+to run even if the given number of containers consume all
+the resources available.
+Without any option given, \fBvzsplit\fR prompts for the desired number
+of containers and outputs the resulting resource control
+parameters to stdout.
+If there are not enough system resources to run the specified number of
+containers, an appropriate message is shown and the sample configuration file
+is not generated.
+.SH OPTIONS
+.TP
+\fB-n\fR \fInumve\fR
+Specify the number of containers.
+.TP
+\fB-f\fR \fIconf_name\fR
+Specify the configuration file name. The program output is placed to
+/etc/vz/conf/ve-\fIconf_name\fR.conf-sample.
+.TP
+\fB-s\fR \fIswapsize\fR
+Specify the swap size in Kbytes. If not provided in the option, the swap size will be read from /proc/meminfo.
+.SH DIAGNOSTICS
+\fBvzsplit\fR returns 0 upon a successful execution. If anything goes wrong, it
+returns 1.
+.SH SEE ALSO
+.BR ctid.conf (5).
+.SH LICENSE
+Copyright (C) 2000-2009, Parallels, Inc. Licensed under GNU GPL.
+
